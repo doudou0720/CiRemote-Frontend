@@ -1,79 +1,172 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --background-color: #ffffff;
+  --text-color: #333333;
+  --border-color: #e6e6e6;
+  --header-background: #007bff;
+  --card-background: #ffffff;
+  --sidebar-background: #f8f9fa;
+  --sidebar-text-color: #000000;
+  --sidebar-text-hover: #007bff;
+  --sidebar-active-background: #e9ecef;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+.dark-theme {
+  --background-color: #1e1e1e;
+  --text-color: #ffffff;
+  --border-color: #444444;
+  --header-background: #0056b3;
+  --card-background: #2d2d2d;
+  --sidebar-background: #1a1a1a;
+  --sidebar-text-color: #ffffff;
+  --sidebar-text-hover: #4dabf7;
+  --sidebar-active-background: #333333;
 }
-a:hover {
-  color: #535bf2;
+
+* {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Header样式 */
+.layui-header.app-header {
+  background-color: var(--header-background) !important;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+/* 卡片样式 */
+.layui-card,
+.settings-content-container {
+  background-color: var(--card-background) !important;
+  color: var(--text-color);
 }
 
-.card {
-  padding: 2em;
+/* 边框颜色 */
+.layui-tab-title,
+.settings-section h2,
+.device-list,
+.device-item,
+.setting-item {
+  border-color: var(--border-color) !important;
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* 侧边栏样式 */
+.layui-side {
+  background-color: var(--sidebar-background) !important;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.layui-side-scroll .layui-nav-tree {
+  background-color: var(--sidebar-background) !important;
+}
+
+/* 侧边栏导航项 */
+.layui-nav-item a {
+  color: var(--sidebar-text-color) !important;
+}
+
+.layui-nav-item a:hover {
+  color: var(--sidebar-text-hover) !important;
+  background-color: var(--sidebar-active-background) !important;
+}
+
+.layui-nav-item .layui-this a {
+  color: var(--sidebar-text-hover) !important;
+  background-color: var(--sidebar-active-background) !important;
+}
+
+.layui-nav-item dd a {
+  color: var(--sidebar-text-color) !important;
+}
+
+.layui-nav-item dd a:hover {
+  color: var(--sidebar-text-hover) !important;
+  background-color: var(--sidebar-active-background) !important;
+}
+
+.layui-nav-item dd.layui-this a {
+  color: var(--sidebar-text-hover) !important;
+  background-color: var(--sidebar-active-background) !important;
+}
+
+/* 输入框样式 */
+.layui-input,
+.layui-select {
+  background-color: var(--card-background) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.layui-input:focus,
+.layui-select:focus {
+  border-color: var(--header-background) !important;
+}
+
+/* 选项卡样式 */
+.layui-tab-title li {
+  color: var(--text-color) !important;
+}
+
+.layui-tab-title .layui-this {
+  color: var(--header-background) !important;
+}
+
+/* 设置页面特定样式 */
+.settings-section h2 {
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+.setting-item label {
+  color: var(--text-color);
+}
+
+.device-item {
+  border-color: var(--border-color);
+}
+
+.device-name,
+.device-status {
+  color: var(--text-color);
+}
+
+/* 全局字体颜色 */
+h1, h2, h3, h4, h5, h6, p, span, div, li, ul, ol, a, td, th, label {
+  color: var(--text-color);
+}
+
+/* 特定组件颜色适配 */
+.main-content {
+  color: var(--text-color);
+}
+
+.footer-container {
+  color: var(--text-color);
+}
+
+.layui-footer {
+  color: var(--text-color);
+}
+
+/* 链接颜色 */
+a {
+  color: var(--text-color);
+}
+
+a:hover {
+  color: var(--header-background);
+}
+
+/* Logo hover效果适配 */
+.logo {
+  filter: drop-shadow(0 0 0 transparent);
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em var(--text-color));
+}
+
+.logo.vue:hover {
+  filter: drop-shadow(0 0 2em var(--text-color));
 }
