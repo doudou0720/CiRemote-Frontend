@@ -40,24 +40,6 @@ const activeSubSetting = ref('language')
 // 子设置项引用
 const subSettingRefs = ref<{[key: string]: HTMLElement | null}>({})
 
-// 监听语言变化
-watch(currentLanguage, (newLocale) => {
-  locale.value = newLocale
-  // 更新主题选项的标签
-  themes[0].label = t('light')
-  themes[1].label = t('dark')
-  // 保存到localStorage
-  saveSettings('language')
-}, { immediate: true })
-
-// 监听主题变化
-watch(theme, (newTheme) => {
-  // 应用主题
-  applyTheme(newTheme)
-  // 保存到localStorage
-  saveSettings('theme')
-}, { immediate: true })
-
 // 保存设置到localStorage
 const saveSettings = (field: string) => {
   if (window.layui) {
@@ -183,6 +165,24 @@ const handleScroll = () => {
     }
   }
 }
+
+// 监听语言变化
+watch(currentLanguage, (newLocale) => {
+  locale.value = newLocale
+  // 更新主题选项的标签
+  themes[0].label = t('light')
+  themes[1].label = t('dark')
+  // 保存到localStorage
+  saveSettings('language')
+}, { immediate: true })
+
+// 监听主题变化
+watch(theme, (newTheme) => {
+  // 应用主题
+  applyTheme(newTheme)
+  // 保存到localStorage
+  saveSettings('theme')
+}, { immediate: true })
 
 onMounted(() => {
   // 初始化layui
