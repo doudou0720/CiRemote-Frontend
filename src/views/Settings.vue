@@ -316,6 +316,25 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 定义主题变量 */
+:root {
+  --text-color: #333;
+  --border-color: #eee;
+  --card-background: #fff;
+}
+
+.light-theme {
+  --text-color: #333;
+  --border-color: #eee;
+  --card-background: #fff;
+}
+
+.dark-theme {
+  --text-color: #e2e2e2;
+  --border-color: #444;
+  --card-background: #1a1a1a;
+}
+
 .settings-content {
   padding: 15px;
   height: 100%;

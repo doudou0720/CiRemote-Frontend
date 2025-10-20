@@ -10,6 +10,18 @@
   --sidebar-active-background: #e9ecef;
 }
 
+.light-theme {
+  --background-color: #ffffff;
+  --text-color: #333333;
+  --border-color: #e6e6e6;
+  --header-background: #007bff;
+  --card-background: #ffffff;
+  --sidebar-background: #f8f9fa;
+  --sidebar-text-color: #000000;
+  --sidebar-text-hover: #007bff;
+  --sidebar-active-background: #e9ecef;
+}
+
 .dark-theme {
   --background-color: #1e1e1e;
   --text-color: #ffffff;

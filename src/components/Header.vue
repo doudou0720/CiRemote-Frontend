@@ -155,7 +155,7 @@ onMounted(() => {
   left: 0;
   width: 100%;
   z-index: 999;
-  padding: 0 20px;
+  padding: 0 10px;
   background-color: var(--header-background) !important;
   height: 60px;
 }
@@ -165,12 +165,13 @@ onMounted(() => {
   align-items: center;
   height: 100%;
   position: relative;
+  justify-content: flex-end;
 }
 
 .layui-nav-item {
   display: flex;
   align-items: center;
-  padding: 0 15px;
+  padding: 0 10px;
   cursor: pointer;
   position: relative;
   transition: all 0.5s ease;
@@ -218,6 +219,31 @@ onMounted(() => {
   
   .icon-button {
     margin-right: 0;
+  }
+}
+
+/* 超小屏幕设备进一步优化 */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0 5px;
+  }
+  
+  .layui-nav-item {
+    padding: 0 3px;
+  }
+}
+
+/* 为曲面屏右侧留出安全边距 */
+.header-icons::after {
+  content: '';
+  display: block;
+  min-width: 20px; /* 为曲面屏右侧留出空隙 */
+}
+
+/* 在超小屏幕上减少右侧空隙 */
+@media (max-width: 480px) {
+  .header-icons::after {
+    min-width: 12px;
   }
 }
 </style>
