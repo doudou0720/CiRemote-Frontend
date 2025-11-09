@@ -1,63 +1,55 @@
 import { createI18n } from 'vue-i18n'
 
-// 定义语言包
-const messages = {
-  zh: {
-    home: '首页',
-    about: '关于',
-    settings: '设置',
-    class: '高二(X)班',
-    // 设置页面相关
-    webSettings: '网页端设置',
-    deviceManagement: '设备管理',
-    language: '语言',
-    theme: '主题',
-    languageSettings: '语言设置',
-    themeSettings: '主题设置',
-    selectLanguage: '选择语言',
-    selectTheme: '选择主题',
-    light: '明亮',
-    dark: '暗黑',
-    deviceList: '设备列表',
-    deviceConfig: '设备配置',
-    deviceConfigSettings: '设备配置',
-    configItem1: '配置项 1',
-    configItem2: '配置项 2',
-    enterConfig: '请输入配置',
-    online: '在线'
-  },
-  en: {
-    home: 'Home',
-    about: 'About',
-    settings: 'Settings',
-    class: 'Class G2(X)',
-    // Settings page related
-    webSettings: 'Web Settings',
-    deviceManagement: 'Device Management',
-    language: 'Language',
-    theme: 'Theme',
-    languageSettings: 'Language Settings',
-    themeSettings: 'Theme Settings',
-    selectLanguage: 'Select Language',
-    selectTheme: 'Select Theme',
-    light: 'Light',
-    dark: 'Dark',
-    deviceList: 'Device List',
-    deviceConfig: 'Device Configuration',
-    deviceConfigSettings: 'Device Config',
-    configItem1: 'Config Item 1',
-    configItem2: 'Config Item 2',
-    enterConfig: 'Please enter configuration',
-    online: 'Online'
-  }
-}
-
-// 创建i18n实例，使用Composition API模式
 const i18n = createI18n({
-  legacy: false, // 使用Composition API模式
-  locale: 'zh', // 默认语言
-  fallbackLocale: 'en', // 回退语言
-  messages,
+  legacy: false,
+  locale: 'zh',
+  fallbackLocale: 'en',
+  messages: {
+    en: {
+      home: 'Home',
+      about: 'About',
+      settings: 'Settings',
+      jobs: 'Jobs',
+      inviteJob: 'Invite Job',
+      save: 'Save',
+      cancel: 'Cancel',
+      delete: 'Delete',
+      edit: 'Edit',
+      add: 'Add',
+      confirm: 'Confirm',
+      close: 'Close',
+      loading: 'Loading...',
+      unnamedJob: 'Unnamed Job',
+      noDescription: 'No description provided',
+      noJobData: 'No job data available',
+      retry: 'Retry',
+      accept: 'Accept',
+      reject: 'Reject',
+      jobDetails: 'Job Details'
+    },
+    zh: {
+      home: '首页',
+      about: '关于',
+      settings: '设置',
+      jobs: '作业',
+      inviteJob: '邀请作业',
+      save: '保存',
+      cancel: '取消',
+      delete: '删除',
+      edit: '编辑',
+      add: '添加',
+      confirm: '确认',
+      close: '关闭',
+      loading: '加载中...',
+      unnamedJob: '未命名作业',
+      noDescription: '暂无描述',
+      noJobData: '暂无作业数据',
+      retry: '重试',
+      accept: '接受',
+      reject: '拒绝',
+      jobDetails: '作业详情'
+    }
+  }
 })
 
 export default i18n

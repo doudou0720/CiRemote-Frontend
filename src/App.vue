@@ -1,30 +1,29 @@
 <script setup lang="ts">
-// 从本地引入layui
-import 'layui/dist/css/layui.css'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import Header from './components/Header.vue'
+
+const route = useRoute()
+
+// 当路由为/jobs或/jobs/invite时隐藏Header
+const hideHeader = computed(() => {
+  return route.path === '/jobs' || route.path === '/jobs/invite'
+})
 </script>
 
 <template>
-  <!-- 固定的Header组件 -->
-  <Header />
-  
-  <!-- 路由视图 -->
-  <router-view v-slot="{ Component }">
-    <transition name="fade" mode="out-in">
-      <component :is="Component" />
-    </transition>
-  </router-view>
+  <div id="app">
+    <Header v-if="!hideHeader" />
+    <router-view />
+  </div>
 </template>
 
-<style scoped>
-/* 页面淡入淡出动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+<style>
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  min-height: 100vh;
 }
 </style>
