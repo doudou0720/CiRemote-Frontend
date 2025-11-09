@@ -4,6 +4,7 @@ import About from '../views/About.vue'
 import Settings from '../views/Settings.vue'
 import Jobs from '../views/Jobs.vue'
 import Invite from '../views/Invite.vue'
+import JobDetail from '../views/JobDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/jobs/invite',
       name: 'invite',
       component: Invite
+    },
+    {
+      path: '/jobs/detail',
+      name: 'jobDetail',
+      component: JobDetail
     }
   ]
 })

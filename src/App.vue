@@ -5,9 +5,11 @@ import Header from './components/Header.vue'
 
 const route = useRoute()
 
-// 当路由为/jobs或/jobs/invite时隐藏Header
+// 当路由为/jobs、/jobs/invite或/jobs/detail时隐藏Header
 const hideHeader = computed(() => {
-  return route.path === '/jobs' || route.path === '/jobs/invite'
+  return route.path === '/jobs' || 
+         route.path === '/jobs/invite' || 
+         route.path === '/jobs/detail'
 })
 </script>
 

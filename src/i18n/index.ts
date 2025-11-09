@@ -25,7 +25,16 @@ const i18n = createI18n({
       retry: 'Retry',
       accept: 'Accept',
       reject: 'Reject',
-      jobDetails: 'Job Details'
+      jobDetails: 'Job Details',
+      author: 'Author',
+      lastUpdated: 'Last Updated',
+      noJobs: 'No jobs available',
+      jobDetail: 'Job Detail',
+      jobContent: 'Job Content',
+      back: 'Back',
+      exportDate: 'Export Date',
+      homeworkList: 'Homework List',
+      noHomeworks: 'No homeworks available'
     },
     zh: {
       home: '首页',
@@ -47,7 +56,16 @@ const i18n = createI18n({
       retry: '重试',
       accept: '接受',
       reject: '拒绝',
-      jobDetails: '作业详情'
+      jobDetails: '作业详情',
+      author: '作者',
+      lastUpdated: '最后更新',
+      noJobs: '暂无作业',
+      jobDetail: '作业详情',
+      jobContent: '作业内容',
+      back: '返回',
+      exportDate: '导出日期',
+      homeworkList: '作业列表',
+      noHomeworks: '暂无作业'
     }
   }
 })

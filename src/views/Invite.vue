@@ -9,8 +9,12 @@
       <button @click="retry" class="retry-button">{{ $t('retry') }}</button>
     </div>
     <div v-else-if="jobData" class="job-data">
-      <h2>{{ jobData.name || $t('unnamedJob') }}</h2>
-      <p>{{ jobData.description || $t('noDescription') }}</p>
+      <h2>{{ jobData.description || jobData.name || $t('unnamedJob') }}</h2>
+      <p v-if="jobData.author || jobData.last" class="job-meta">
+        <span v-if="jobData.author">{{ $t('author') }}: {{ jobData.author }}</span>
+        <span v-if="jobData.author && jobData.last"> | </span>
+        <span v-if="jobData.last">{{ $t('lastUpdated') }}: {{ jobData.last }}</span>
+      </p>
       <div class="job-actions">
         <button @click="acceptJob" class="accept-button">{{ $t('accept') }}</button>
         <button @click="rejectJob" class="reject-button">{{ $t('reject') }}</button>
@@ -29,6 +33,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { parseJobIndex, validateJobIndex } from '@/parsers/index/job-index-parser'
+
+// 声明layui的window扩展
+declare global {
+  interface Window {
+    layui: any;
+  }
+}
 
 // 声明响应式变量
 const route = useRoute()
@@ -36,6 +48,16 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const jobData = ref<any>(null)
+const originalUrl = ref('') // 保存原始URL
+
+// 解码base64字符串
+const decodeBase64 = (str: string): string => {
+  try {
+    return atob(str)
+  } catch (e) {
+    throw new Error('Invalid base64 encoded URL')
+  }
+}
 
 // 获取GitHub仓库根目录下的index.json
 const fetchGithubIndex = async (repoUrl: string) => {
@@ -66,13 +88,23 @@ const fetchGithubIndex = async (repoUrl: string) => {
       throw new Error(`Failed to fetch ${rawUrl}: ${response.status} ${response.statusText}`)
     }
     
-    const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.includes('application/json')) {
+    // 尝试解析响应为JSON，而不严格依赖Content-Type
+    const text = await response.text()
+    try {
+      const data = JSON.parse(text)
+      
+      // 验证并解析作业索引数据
+      const validation = validateJobIndex(data)
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '))
+      }
+      
+      // 解析为标准化的作业索引对象
+      const parsedData = parseJobIndex(data)
+      return parsedData
+    } catch (jsonError) {
       throw new Error('Returned content is not valid JSON')
     }
-    
-    const data = await response.json()
-    return data
   } catch (err: any) {
     throw new Error(`Failed to fetch GitHub index.json: ${err.message}`)
   }
@@ -80,8 +112,11 @@ const fetchGithubIndex = async (repoUrl: string) => {
 
 // 处理邀请请求
 const handleInvite = async () => {
-  const url = route.query.url as string
+  let url = route.query.url as string
   const method = route.query.method as string
+  
+  // 保存原始URL用于存储
+  originalUrl.value = url;
   
   // 检查必需参数
   if (!url) {
@@ -92,6 +127,14 @@ const handleInvite = async () => {
   if (!method) {
     error.value = 'Missing required parameter: method'
     return
+  }
+  
+  // 解码base64编码的URL
+  try {
+    url = decodeBase64(url)
+  } catch (e) {
+    // 如果解码失败，假设URL未编码
+    // 不做任何处理，继续使用原始URL
   }
   
   loading.value = true
@@ -117,8 +160,27 @@ const retry = () => {
 
 // 接受作业
 const acceptJob = () => {
-  alert('Job accepted!') // 这里可以替换为实际的业务逻辑
-  router.push('/jobs')
+  try {
+    // 使用layui的LocalStorage方法存储URL
+    if (window.layui) {
+      // 只存储原始URL到LocalStorage
+      window.layui.data('job_invites', {
+        key: 'accepted_urls',
+        value: originalUrl.value
+      });
+      
+      console.log('Job URL stored in LocalStorage');
+    } else {
+      // 如果layui不可用，使用原生LocalStorage
+      localStorage.setItem('job_invite_url', originalUrl.value);
+      console.log('Job URL stored in native LocalStorage');
+    }
+    
+    router.push('/jobs')
+  } catch (e) {
+    console.error('Failed to store job URL in LocalStorage:', e);
+    alert('Failed to accept job: ' + (e as Error).message);
+  }
 }
 
 // 拒绝作业
@@ -150,6 +212,12 @@ onMounted(() => {
   padding: 20px;
   border: 1px solid #ddd;
   border-radius: 4px;
+}
+
+.job-meta {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 15px;
 }
 
 .job-actions {
