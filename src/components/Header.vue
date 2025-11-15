@@ -26,7 +26,17 @@ const indicatorStyle = ref({
 // 获取导航项的DOM元素
 const navItems = ref<HTMLElement[]>([])
 
+// 在模板中为每个导航项分配不同的ref
+const setNavItemRef = (el: HTMLElement | null, index: number) => {
+  if (el && !navItems.value.includes(el)) {
+    navItems.value[index] = el
+  }
+}
+
 // 获取当前激活项的索引
+// 该函数根据当前活动导航项返回对应的数组索引位置
+// home对应索引0，about对应索引1，settings对应索引2
+// 如果没有匹配项则返回-1表示未找到
 const getActiveIndex = () => {
   switch (activeNav.value) {
     case 'home': return 0
@@ -112,7 +122,7 @@ onMounted(() => {
   <header class="layui-header app-header">
     <div class="layui-layout-right header-icons">
       <span 
-        ref="navItems"
+        :ref="(el) => setNavItemRef(el as HTMLElement, 0)"
         class="layui-nav-item" 
         :class="{ 'active': activeNav === 'home' }"
         @click="navigateTo('/', 'home')">
@@ -123,7 +133,7 @@ onMounted(() => {
         <span class="nav-text">{{ t('home') }}</span>
       </span>
       <span 
-        ref="navItems"
+        :ref="(el) => setNavItemRef(el as HTMLElement, 1)"
         class="layui-nav-item" 
         :class="{ 'active': activeNav === 'about' }"
         @click="navigateTo('/about', 'about')">
@@ -134,7 +144,7 @@ onMounted(() => {
         <span class="nav-text">{{ t('about') }}</span>
       </span>
       <span 
-        ref="navItems"
+        :ref="(el) => setNavItemRef(el as HTMLElement, 2)"
         class="layui-nav-item" 
         :class="{ 'active': activeNav === 'settings' }"
         @click="navigateTo('/settings', 'settings')">

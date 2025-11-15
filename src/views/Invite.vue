@@ -163,10 +163,15 @@ const acceptJob = () => {
   try {
     // 使用layui的LocalStorage方法存储URL
     if (window.layui) {
-      // 只存储原始URL到LocalStorage
+      // 修复数据存储问题，允许多个作业URL被存储
+      let storedUrls = window.layui.data('job_invites', {key: 'accepted_urls'}) || []
+      if (!Array.isArray(storedUrls)) {
+        storedUrls = [storedUrls].filter(Boolean) // 处理旧格式数据
+      }
+      storedUrls.push(originalUrl.value)
       window.layui.data('job_invites', {
         key: 'accepted_urls',
-        value: originalUrl.value
+        value: storedUrls
       });
       
       console.log('Job URL stored in LocalStorage');

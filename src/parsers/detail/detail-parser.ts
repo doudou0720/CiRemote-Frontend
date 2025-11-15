@@ -9,7 +9,7 @@ export type DetailData = StickyHomeworksDataV0 // 当前只支持V0版本
 
 /**
  * 解析详细信息文件
- * @param data 从detail.json解析出的原始数据
+ * @param data 从index.json解析出的原始数据
  * @returns 标准化的详细信息对象
  * @throws {Error} 当版本不支持或数据格式不正确时抛出错误
  */
