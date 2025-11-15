@@ -161,23 +161,34 @@ const retry = () => {
 // 接受作业
 const acceptJob = () => {
   try {
-    // 使用layui的LocalStorage方法存储URL
+    // 使用统一的存储方法存储URL
     if (window.layui) {
-      // 修复数据存储问题，允许多个作业URL被存储
+      // 使用layui的LocalStorage方法存储URL
       let storedUrls = window.layui.data('job_invites', {key: 'accepted_urls'}) || []
       if (!Array.isArray(storedUrls)) {
         storedUrls = [storedUrls].filter(Boolean) // 处理旧格式数据
       }
-      storedUrls.push(originalUrl.value)
-      window.layui.data('job_invites', {
-        key: 'accepted_urls',
-        value: storedUrls
-      });
+      
+      // 防止重复存储相同的URL
+      if (!storedUrls.includes(originalUrl.value)) {
+        storedUrls.push(originalUrl.value)
+        window.layui.data('job_invites', {
+          key: 'accepted_urls',
+          value: storedUrls
+        });
+      }
       
       console.log('Job URL stored in LocalStorage');
     } else {
-      // 如果layui不可用，使用原生LocalStorage
-      localStorage.setItem('job_invite_url', originalUrl.value);
+      // 如果layui不可用，使用原生LocalStorage，保持相同的数组格式
+      let storedUrls = JSON.parse(localStorage.getItem('accepted_urls') || '[]')
+      
+      // 防止重复存储相同的URL
+      if (!storedUrls.includes(originalUrl.value)) {
+        storedUrls.push(originalUrl.value)
+        localStorage.setItem('accepted_urls', JSON.stringify(storedUrls));
+      }
+      
       console.log('Job URL stored in native LocalStorage');
     }
     
