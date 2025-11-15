@@ -138,10 +138,8 @@ const loadJobs = async () => {
         }
       }
     } else {
-      const storedUrl = localStorage.getItem('job_invite_url')
-      if (storedUrl) {
-        urls = [storedUrl]
-      }
+      // 使用统一的存储键名和数组格式
+      urls = JSON.parse(localStorage.getItem('accepted_urls') || '[]')
     }
     
     // 获取每个URL的作业数据

@@ -26,14 +26,30 @@ const indicatorStyle = ref({
 // 获取导航项的DOM元素
 const navItems = ref<HTMLElement[]>([])
 
-// 获取当前激活项的索引
-const getActiveIndex = () => {
-  switch (activeNav.value) {
-    case 'home': return 0
-    case 'about': return 1
-    case 'settings': return 2
-    default: return -1
+// 在模板中为每个导航项分配不同的ref
+// 确保即使Vue渲染顺序不一致也能正确映射索引和元素
+const setNavItemRef = (el: HTMLElement | null, index: number) => {
+  if (el) {
+    // 确保数组长度并直接赋值，避免因渲染顺序不一致导致的索引错位
+    if (navItems.value.length <= index) {
+      navItems.value.length = index + 1
+    }
+    navItems.value[index] = el
   }
+}
+
+// 定义导航结构，集中管理路由与索引的映射关系
+const navigationConfig = [
+  { route: '/', name: 'home', icon: 'home' },
+  { route: '/about', name: 'about', icon: 'about' },
+  { route: '/settings', name: 'settings', icon: 'set' }
+]
+
+// 获取当前激活项的索引
+// 通过查找navigationConfig数组来确定当前活动导航项的索引位置
+// 如果没有匹配项则返回-1表示未找到
+const getActiveIndex = () => {
+  return navigationConfig.findIndex(item => item.name === activeNav.value)
 }
 
 const updateActiveNav = (path: string) => {
@@ -112,34 +128,37 @@ onMounted(() => {
   <header class="layui-header app-header">
     <div class="layui-layout-right header-icons">
       <span 
-        ref="navItems"
+        :ref="(el) => setNavItemRef(el as HTMLElement, 0)"
         class="layui-nav-item" 
         :class="{ 'active': activeNav === 'home' }"
-        @click="navigateTo('/', 'home')">
+        @click="navigateTo(navigationConfig[0].route, navigationConfig[0].name)">
         <i 
-          class="layui-icon layui-icon-home icon-button" 
-          :title="t('home')">
+          :class="['layui-icon', `layui-icon-${navigationConfig[0].icon}`, 'icon-button']"
+          :title="t(navigationConfig[0].name)">
         </i>
-        <span class="nav-text">{{ t('home') }}</span>
+        <span class="nav-text">{{ t(navigationConfig[0].name) }}</span>
       </span>
       <span 
-        ref="navItems"
+        :ref="(el) => setNavItemRef(el as HTMLElement, 1)"
         class="layui-nav-item" 
         :class="{ 'active': activeNav === 'about' }"
-        @click="navigateTo('/about', 'about')">
+        @click="navigateTo(navigationConfig[1].route, navigationConfig[1].name)">
         <i 
-          class="layui-icon layui-icon-about icon-button" 
-          :title="t('about')">
+          :class="['layui-icon', `layui-icon-${navigationConfig[1].icon}`, 'icon-button']"
+          :title="t(navigationConfig[1].name)">
         </i>
-        <span class="nav-text">{{ t('about') }}</span>
+        <span class="nav-text">{{ t(navigationConfig[1].name) }}</span>
       </span>
       <span 
-        ref="navItems"
+        :ref="(el) => setNavItemRef(el as HTMLElement, 2)"
         class="layui-nav-item" 
         :class="{ 'active': activeNav === 'settings' }"
-        @click="navigateTo('/settings', 'settings')">
-        <i class="layui-icon layui-icon-set icon-button" :title="t('settings')"></i>
-        <span class="nav-text">{{ t('settings') }}</span>
+        @click="navigateTo(navigationConfig[2].route, navigationConfig[2].name)">
+        <i 
+          :class="['layui-icon', `layui-icon-${navigationConfig[2].icon}`, 'icon-button']"
+          :title="t(navigationConfig[2].name)">
+        </i>
+        <span class="nav-text">{{ t(navigationConfig[2].name) }}</span>
       </span>
       
       <!-- 滑动指示器 -->
