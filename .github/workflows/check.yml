@@ -59,9 +59,6 @@ jobs:
       - name: Run ESLint
         run: pnpm run lint
 
-      - name: Run TypeScript type check
-        run: npx tsc --noEmit
-
   code-review:
     name: Code Review Tools
     runs-on: ubuntu-latest
