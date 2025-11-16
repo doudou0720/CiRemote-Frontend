@@ -34,17 +34,10 @@ jobs:
       - name: Run build
         run: pnpm run build
 
-      - name: Notify Vercel
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: vercel/action@v28
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          github-comment: false
-
   lint:
     name: Lint and Code Quality
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,7 +66,7 @@ jobs:
     name: Code Review Tools
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
