@@ -38,7 +38,14 @@ export function filterXmlTags(content: string): string {
       return doc.body.textContent || doc.body.innerText || content;
     } catch (e) {
       // 如果DOM解析失败，使用正则表达式作为备选方案
-      return content.replace(/<[^>]*>/g, '').trim();
+      // Apply repeated replacement to fully remove fragmented or nested tags
+      let filtered = content;
+      let previous;
+      do {
+        previous = filtered;
+        filtered = filtered.replace(/<[^>]*>/g, '');
+      } while (filtered !== previous);
+      return filtered.trim();
     }
   }
   
