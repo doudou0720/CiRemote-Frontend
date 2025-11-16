@@ -35,6 +35,15 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { parseJobIndex, validateJobIndex } from '@/parsers/index/job-index-parser'
 
+// 定义类型
+interface JobData {
+  name?: string;
+  description?: string;
+  author?: string;
+  last?: string;
+  [key: string]: any;
+}
+
 // 声明layui的window扩展
 declare global {
   interface Window {
@@ -47,7 +56,7 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const jobData = ref<any>(null)
+const jobData = ref<JobData | null>(null)
 const originalUrl = ref('') // 保存原始URL
 
 // 解码base64字符串
@@ -60,7 +69,7 @@ const decodeBase64 = (str: string): string => {
 }
 
 // 获取GitHub仓库根目录下的index.json
-const fetchGithubIndex = async (repoUrl: string) => {
+const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
   try {
     // 检查是否是有效的GitHub URL
     if (!repoUrl.startsWith('https://github.com/')) {
@@ -110,44 +119,30 @@ const fetchGithubIndex = async (repoUrl: string) => {
   }
 }
 
-// 处理邀请请求
-const handleInvite = async () => {
-  let url = route.query.url as string
-  const method = route.query.method as string
-  
-  // 保存原始URL用于存储
-  originalUrl.value = url;
-  
-  // 检查必需参数
-  if (!url) {
-    error.value = 'Missing required parameter: url'
-    return
-  }
-  
-  if (!method) {
-    error.value = 'Missing required parameter: method'
-    return
-  }
-  
-  // 解码base64编码的URL
+// 加载作业数据
+const loadJobData = async () => {
   try {
-    url = decodeBase64(url)
-  } catch (e) {
-    // 如果解码失败，假设URL未编码
-    // 不做任何处理，继续使用原始URL
-  }
-  
-  loading.value = true
-  error.value = ''
-  
-  try {
-    if (method === 'github') {
-      jobData.value = await fetchGithubIndex(url)
-    } else {
-      error.value = `Unsupported method: ${method}`
+    loading.value = true
+    error.value = ''
+    jobData.value = null
+    
+    // 从查询参数获取URL
+    const urlParam = route.query.url as string
+    if (!urlParam) {
+      throw new Error('Missing required parameter: url')
     }
+    
+    // 保存原始URL
+    originalUrl.value = urlParam
+    
+    // 解码URL参数
+    const decodedUrl = decodeBase64(decodeURIComponent(urlParam))
+    
+    // 获取作业索引数据
+    const data = await fetchGithubIndex(decodedUrl)
+    jobData.value = data
   } catch (err: any) {
-    error.value = err.message || 'An error occurred while processing the request'
+    error.value = err.message || 'Failed to load job data'
   } finally {
     loading.value = false
   }
@@ -155,57 +150,75 @@ const handleInvite = async () => {
 
 // 重试函数
 const retry = () => {
-  handleInvite()
+  loadJobData()
 }
 
 // 接受作业
-const acceptJob = () => {
+const acceptJob = async () => {
+  if (!jobData.value) return
+  
   try {
-    // 使用统一的存储方法存储URL
-    if (window.layui) {
-      // 使用layui的LocalStorage方法存储URL
-      let storedUrls = window.layui.data('job_invites', {key: 'accepted_urls'}) || []
-      if (!Array.isArray(storedUrls)) {
-        storedUrls = [storedUrls].filter(Boolean) // 处理旧格式数据
+    // 保存作业数据到localStorage
+    const jobListKey = 'jobList'
+    let jobList: Array<{url: string, data: JobData}> = []
+    
+    // 尝试从localStorage读取现有的作业列表
+    try {
+      if (window.layui) {
+        const storedData = layui.data('jobs')
+        jobList = storedData[jobListKey] || []
+      } else {
+        const storedList = localStorage.getItem(jobListKey)
+        if (storedList) {
+          jobList = JSON.parse(storedList)
+        }
       }
-      
-      // 防止重复存储相同的URL
-      if (!storedUrls.includes(originalUrl.value)) {
-        storedUrls.push(originalUrl.value)
-        window.layui.data('job_invites', {
-          key: 'accepted_urls',
-          value: storedUrls
-        });
-      }
-      
-      console.log('Job URL stored in LocalStorage');
-    } else {
-      // 如果layui不可用，使用原生LocalStorage，保持相同的数组格式
-      let storedUrls = JSON.parse(localStorage.getItem('accepted_urls') || '[]')
-      
-      // 防止重复存储相同的URL
-      if (!storedUrls.includes(originalUrl.value)) {
-        storedUrls.push(originalUrl.value)
-        localStorage.setItem('accepted_urls', JSON.stringify(storedUrls));
-      }
-      
-      console.log('Job URL stored in native LocalStorage');
+    } catch (e) {
+      console.warn('Failed to read job list from storage:', e)
     }
     
+    // 检查是否已存在相同的URL
+    const exists = jobList.some(job => job.url === originalUrl.value)
+    if (!exists) {
+      // 添加新作业到列表
+      jobList.push({
+        url: originalUrl.value,
+        data: jobData.value
+      })
+      
+      // 保存更新后的作业列表
+      try {
+        if (window.layui) {
+          layui.data('jobs', {
+            key: jobListKey,
+            value: jobList
+          })
+        } else {
+          localStorage.setItem(jobListKey, JSON.stringify(jobList))
+        }
+      } catch (e) {
+        console.error('Failed to save job list:', e)
+        throw new Error('Failed to save job to localStorage')
+      }
+    }
+    
+    // 跳转到作业列表页面
     router.push('/jobs')
-  } catch (e) {
-    console.error('Failed to store job URL in LocalStorage:', e);
-    alert('Failed to accept job: ' + (e as Error).message);
+  } catch (err: any) {
+    error.value = err.message || 'Failed to accept job'
   }
 }
 
 // 拒绝作业
 const rejectJob = () => {
-  router.push('/jobs')
+  // 清除作业数据并返回上一页
+  jobData.value = null
+  router.go(-1)
 }
 
+// 生命周期钩子
 onMounted(() => {
-  handleInvite()
+  loadJobData()
 })
 </script>
 

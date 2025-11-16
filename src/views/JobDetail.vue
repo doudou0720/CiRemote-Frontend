@@ -13,47 +13,54 @@
       <div class="homeworks-list">
         <h3>{{ $t('homeworkList') }}</h3>
         <div v-if="jobData.Homeworks && jobData.Homeworks.length > 0" class="homeworks">
+          <!-- 按学科分组显示作业 -->
           <div 
-            v-for="(homework, index) in jobData.Homeworks" 
-            :key="index"
-            class="homework-item"
+            v-for="(homeworkGroup, subject) in groupedHomeworks" 
+            :key="subject"
+            class="subject-group"
           >
-            <div class="homework-header">
-              <span class="subject">{{ homework.Subject }}</span>
-              <span class="due-time">{{ formatDueTime(homework.DueTime) }}</span>
-            </div>
-            <div class="homework-content">
-              {{ filterXmlTags(homework.Content) }}
-            </div>
-            <div v-if="homework.Tags && homework.Tags.length > 0" class="homework-tags">
-              <span 
-                v-for="(tag, tagIndex) in homework.Tags" 
-                :key="tagIndex"
-                class="tag"
-              >
-                {{ tag }}
-              </span>
-            </div>
-            <!-- 显示附件列表 -->
-            <div v-if="githubAttachments[index] && githubAttachments[index].length > 0" class="attachments">
-              <h4>{{ $t('attachments') }}</h4>
-              <ul class="attachment-list">
-                <li v-for="attachment in githubAttachments[index]" :key="attachment.name">
-                  <a 
-                    :href="getPreviewUrl(attachment)" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                  >
-                    {{ attachment.name }}
-                  </a>
-                </li>
-              </ul>
+            <h4 class="subject-title">{{ subject }}</h4>
+            <div 
+              v-for="(homework, index) in homeworkGroup" 
+              :key="index"
+              class="homework-item"
+            >
+              <div class="homework-header">
+                <span class="due-time">{{ formatDueTime(homework.DueTime) }}</span>
+              </div>
+              <div class="homework-content">
+                {{ filterXmlTags(homework.Content) }}
+              </div>
+              <div v-if="homework.Tags && homework.Tags.length > 0" class="homework-tags">
+                <span 
+                  v-for="(tag, tagIndex) in homework.Tags" 
+                  :key="tagIndex"
+                  class="tag"
+                >
+                  {{ tag }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
         <div v-else class="no-homeworks">
           {{ $t('noHomeworks') }}
         </div>
+      </div>
+      <!-- 统一显示所有附件，不分学科 -->
+      <div v-if="allAttachments && allAttachments.length > 0" class="all-attachments">
+        <h3>{{ $t('attachments') }}</h3>
+        <ul class="attachment-list">
+          <li v-for="attachment in allAttachments" :key="attachment.name">
+            <a 
+              :href="getPreviewUrl(attachment)" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              {{ attachment.name }}
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
     <div v-else class="no-data">
@@ -66,18 +73,63 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+// 从 '@' 开头的路径导入解析器
 import { parseDetailData, validateDetailData } from '@/parsers/detail/detail-parser'
-import { canPreviewWithOffice, getOfficePreviewUrl } from '@/utils/fileexplorer'
-import { filterXmlTags } from '@/utils/contentFilter'
+
+// 定义附件类型
+interface Attachment {
+  name: string;
+  download_url: string;
+  [key: string]: any;
+}
+
+// 定义作业类型
+interface Homework {
+  Subject: string;
+  Content: string;
+  DueTime: string;
+  Tags?: string[];
+  [key: string]: any;
+}
+
+// 定义作业数据类型
+interface JobData {
+  Description?: string;
+  ExportDate: string;
+  Homeworks: Homework[];
+  [key: string]: any;
+}
+
+// 自定义Office文档预览函数
+const canPreviewWithOffice = (filename: string): boolean => {
+  const officeExtensions = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
+  return officeExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+};
+
+// 生成Office文档预览链接
+const getOfficePreviewUrl = (url: string): string => {
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+};
+
+// 过滤XML标签的简单实现
+const filterXmlTags = (content: string): string => {
+  if (!content) return '';
+  return content.replace(/<[^>]*>/g, '');
+};
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const jobData = ref<any>(null)
-const githubAttachments = ref<any[]>([])
+const jobData = ref<JobData | null>(null)
+const githubAttachments = ref<Attachment[][]>([])
+
+// 返回上一页
+const goBack = () => {
+  router.go(-1)
+}
 
 // 解码base64字符串
 const decodeBase64 = (str: string): string => {
@@ -109,7 +161,7 @@ const formatDueTime = (dateString: string): string => {
 }
 
 // 获取文件预览URL
-const getPreviewUrl = (attachment: any) => {
+const getPreviewUrl = (attachment: Attachment) => {
   if (canPreviewWithOffice(attachment.name)) {
     return getOfficePreviewUrl(attachment.download_url)
   }
@@ -202,7 +254,8 @@ const loadJobDetail = async () => {
     const decodedUrl = decodeBase64(decodeURIComponent(urlParam))
     
     // 获取作业数据
-    jobData.value = await fetchJobData(decodedUrl)
+    const data = await fetchJobData(decodedUrl)
+    jobData.value = data
     
     // 检查是否是GitHub URL，如果是则获取附件
     if (decodedUrl.startsWith('https://raw.githubusercontent.com/')) {
@@ -218,31 +271,25 @@ const loadJobDetail = async () => {
         // 重构GitHub仓库URL，添加ref参数
         const repoUrl = `https://github.com/${user}/${repo}?ref=${branch}`
         
-        // 获取每个作业的附件
-        const attachmentsPromises = jobData.value.Homeworks.map(async (_: any, index: number) => {
-          // 从原始URL中提取作业路径
-          const pathSegments = urlObj.pathname.split('/').filter(part => part)
-          if (pathSegments.length >= 4) {
-            // 构建作业目录路径 (去掉最开始的user, repo, branch和最后的index.json)
-            const basePath = pathSegments.slice(3, pathSegments.length - 1).join('/')
-            const homeworkPath = `${basePath}`
-            
-            // 为每个作业获取附件
-            const attachments = await fetchGithubAttachments(repoUrl, homeworkPath)
-            return { index, attachments }
+        // 只请求一次附件，获取作业根目录下的所有文件
+        const pathSegments = urlObj.pathname.split('/').filter(part => part)
+        if (pathSegments.length >= 3) {
+          // 构建作业根目录路径 (去掉最开始的user, repo, branch和最后的index.json)
+          const basePath = pathSegments.slice(3, pathSegments.length - 1).join('/')
+          
+          // 获取一次附件即可
+          const attachments = await fetchGithubAttachments(repoUrl, basePath)
+          
+          // 将附件分配给所有作业（因为它们共享同一目录）
+          const attachmentsMap: Attachment[][] = []
+          if (jobData.value.Homeworks) {
+            jobData.value.Homeworks.forEach((_: any, index: number) => {
+              attachmentsMap[index] = attachments
+            })
           }
-          return { index, attachments: [] }
-        })
-        
-        const attachmentsResults = await Promise.all(attachmentsPromises)
-        
-        // 构建附件映射
-        const attachmentsMap: any[] = []
-        attachmentsResults.forEach(result => {
-          attachmentsMap[result.index] = result.attachments
-        })
-        
-        githubAttachments.value = attachmentsMap
+          
+          githubAttachments.value = attachmentsMap
+        }
       }
     }
   } catch (err: any) {
@@ -250,11 +297,6 @@ const loadJobDetail = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// 返回上一页
-const goBack = () => {
-  router.go(-1)
 }
 
 onMounted(() => {
@@ -317,6 +359,18 @@ onMounted(() => {
   color: #2196f3;
 }
 
+.subject-group {
+  margin-bottom: 20px;
+}
+
+.subject-title {
+  font-size: 18px;
+  color: #2196f3;
+  margin: 15px 0 10px 0;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
 .due-time {
   color: #f44336;
 }
@@ -345,6 +399,17 @@ onMounted(() => {
   color: #999;
 }
 
+.all-attachments {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #ddd;
+}
+
+.all-attachments h3 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
 .actions {
   margin-top: 20px;
 }
@@ -358,16 +423,6 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.attachments {
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #eee;
-}
-
-.attachments h4 {
-  margin: 0 0 10px 0;
-  color: #666;
-}
 
 .attachment-list {
   list-style-type: none;

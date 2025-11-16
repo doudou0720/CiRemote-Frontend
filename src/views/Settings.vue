@@ -13,17 +13,17 @@ const { t, locale } = useI18n()
 
 // 主题设置
 const theme = ref('light')
-const themes = [
+const themes = ref([
   { value: 'light', label: t('light') },
   { value: 'dark', label: t('dark') }
-]
+])
 
 // 语言设置
 const currentLanguage = ref(locale.value)
-const languages = [
+const languages = ref([
   { value: 'zh', label: '中文' },
   { value: 'en', label: 'English' }
-]
+])
 
 // 保存状态
 const saveStatus = ref({
@@ -66,7 +66,7 @@ const saveSettings = (field: string) => {
       console.error('保存设置失败:', e)
       // 使用layui弹窗显示错误信息
       window.layui.use('layer', function() {
-        var layer = window.layui.layer;
+        const layer = window.layui.layer;
         layer.msg('设置保存失败: ' + (e.message || e.toString()), {
           icon: 2, // 错误图标
           time: 3000 // 3秒后自动关闭
@@ -99,7 +99,7 @@ const loadSettings = () => {
       console.error('加载设置失败:', e)
       // 使用layui弹窗显示错误信息
       window.layui.use('layer', function() {
-        var layer = window.layui.layer;
+        const layer = window.layui.layer;
         layer.msg('设置加载失败: ' + (e.message || e.toString()), {
           icon: 2, // 错误图标
           time: 3000 // 3秒后自动关闭
@@ -170,8 +170,8 @@ const handleScroll = () => {
 watch(currentLanguage, (newLocale) => {
   locale.value = newLocale
   // 更新主题选项的标签
-  themes[0].label = t('light')
-  themes[1].label = t('dark')
+  themes.value[0].label = t('light')
+  themes.value[1].label = t('dark')
   // 保存到localStorage
   saveSettings('language')
 }, { immediate: true })
@@ -188,7 +188,7 @@ onMounted(() => {
   // 初始化layui
   if (window.layui) {
     window.layui.use(['element', 'data', 'layer'], function () {
-      var element = window.layui.element;
+      const element = window.layui.element;
       // 重新渲染元素
       element.render();
     });

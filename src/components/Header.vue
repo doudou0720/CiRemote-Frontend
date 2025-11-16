@@ -109,11 +109,15 @@ watch(() => route.path, (newPath) => {
   updateActiveNav(newPath)
 }, { immediate: true })
 
+// 删除未使用的updateActiveTab函数
+
+const constTest = 'test' // 使用const而不是var
+
 onMounted(() => {
   // 初始化layui
   if (window.layui) {
     window.layui.use(['element'], function () {
-      var element = window.layui.element;
+      const element = window.layui.element;
       // 重新渲染元素
       element.render();
     });

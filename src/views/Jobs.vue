@@ -35,6 +35,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { parseJobIndex, validateJobIndex } from '@/parsers/index/job-index-parser'
 
+// 定义类型
+interface JobData {
+  url: string;
+  data: any;
+}
+
 // 声明layui的window扩展
 declare global {
   interface Window {
@@ -45,7 +51,7 @@ declare global {
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const jobList = ref<Array<{url: string, data: any}>>([])
+const jobList = ref<JobData[]>([])
 
 // 解码base64字符串
 const decodeBase64 = (str: string): string => {
@@ -114,50 +120,52 @@ const fetchJobIndex = async (repoUrl: string) => {
   }
 }
 
-// 加载所有作业
+// 导航到作业详情页
+const navigateToJob = (job: JobData) => {
+  // 编码URL参数
+  const encodedUrl = encodeURIComponent(btoa(job.url))
+  router.push(`/jobs/detail?url=${encodedUrl}`)
+}
+
+// 加载作业列表
 const loadJobs = async () => {
-  loading.value = true
-  error.value = ''
-  jobList.value = []
-  
   try {
-    let urls: string[] = []
+    loading.value = true
+    error.value = ''
     
-    // 从LocalStorage获取URL列表
-    if (window.layui) {
-      const storedUrls = window.layui.data('job_invites', {
-        key: 'accepted_urls'
-      });
-      
-      if (storedUrls) {
-        // 处理单个URL或URL数组
-        if (Array.isArray(storedUrls)) {
-          urls = storedUrls
-        } else {
-          urls = [storedUrls]
+    // 尝试从localStorage读取作业列表
+    let storedJobs: JobData[] = []
+    
+    try {
+      if (window.layui) {
+        const storedData = layui.data('jobs')
+        storedJobs = storedData.jobList || []
+      } else {
+        const storedList = localStorage.getItem('jobList')
+        if (storedList) {
+          storedJobs = JSON.parse(storedList)
         }
       }
-    } else {
-      // 使用统一的存储键名和数组格式
-      urls = JSON.parse(localStorage.getItem('accepted_urls') || '[]')
+    } catch (e) {
+      console.warn('Failed to read job list from storage:', e)
     }
     
-    // 获取每个URL的作业数据
-    const jobs = []
-    for (const url of urls) {
+    // 获取每个作业的详细信息
+    const jobsWithDetails = await Promise.all(storedJobs.map(async (job) => {
       try {
-        const decodedUrl = decodeBase64(url)
-        const data = await fetchJobIndex(decodedUrl)
-        jobs.push({
-          url: url,
-          data: data
-        })
+        const data = await fetchJobIndex(job.url)
+        return {
+          url: job.url,
+          data
+        }
       } catch (err) {
-        console.error(`Failed to load job from ${url}:`, err)
+        console.error(`Failed to fetch job data for ${job.url}:`, err)
+        // 返回原始数据
+        return job
       }
-    }
+    }))
     
-    jobList.value = jobs
+    jobList.value = jobsWithDetails
   } catch (err: any) {
     error.value = err.message || 'Failed to load jobs'
   } finally {
@@ -165,44 +173,7 @@ const loadJobs = async () => {
   }
 }
 
-// 导航到作业详情
-const navigateToJob = (job: {url: string, data: any}) => {
-  const last = job.data.last
-  const originalUrl = decodeBase64(job.url)
-  
-  if (last) {
-    // 如果有last字段，基于原始URL构建/data/{last}/index.json路径
-    let detailUrl = ''
-    
-    if (originalUrl.startsWith('https://github.com/')) {
-      // 处理GitHub URL
-      const urlObj = new URL(originalUrl)
-      const pathParts = urlObj.pathname.split('/').filter(part => part)
-      
-      if (pathParts.length >= 2) {
-        const user = pathParts[0]
-        const repo = pathParts[1]
-        detailUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/data/${last}/index.json`
-      }
-    } else {
-      // 处理普通URL，在原始URL目录下查找/data/{last}/index.json
-      try {
-        const urlObj = new URL(originalUrl)
-        const basePath = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1)
-        detailUrl = `${basePath}data/${last}/index.json`
-      } catch (e) {
-        // 如果URL解析失败，使用相对路径
-        detailUrl = `data/${last}/index.json`
-      }
-    }
-    
-    router.push(`/jobs/detail?url=${encodeURIComponent(btoa(detailUrl))}`)
-  } else {
-    // 如果没有last字段，直接访问原始URL
-    router.push(`/jobs/detail?url=${encodeURIComponent(job.url)}`)
-  }
-}
-
+// 生命周期钩子
 onMounted(() => {
   loadJobs()
 })

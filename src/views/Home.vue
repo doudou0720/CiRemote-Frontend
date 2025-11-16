@@ -1,23 +1,38 @@
 <script setup lang="ts">
-import HelloWorld from '../components/HelloWorld.vue'
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import HelloWorld from '@/components/HelloWorld.vue'
 
-// 声明layui的window扩展
-declare global {
-  interface Window {
-    layui: any;
+// 定义响应式数据
+const count = ref(0)
+const message = ref('Hello Vue 3 + TypeScript + Vite')
+
+// 定义函数
+const increment = () => {
+  count.value++
+}
+
+// 定义异步函数
+const fetchData = async (): Promise<void> => {
+  try {
+    // 模拟异步操作
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    message.value = 'Data loaded successfully!'
+  } catch (error) {
+    console.error('Failed to fetch data:', error)
   }
 }
 
+// 生命周期钩子
 onMounted(() => {
-  // 初始化layui
-  if (window.layui) {
-    window.layui.use(['element'], function () {
-      var element = window.layui.element;
-      // 重新渲染元素
-      element.render();
-    });
-  }
+  console.log('Home component mounted')
+})
+
+// 导出需要在模板中使用的变量和函数
+defineExpose({
+  count,
+  message,
+  increment,
+  fetchData
 })
 </script>
 
