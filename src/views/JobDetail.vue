@@ -305,6 +305,40 @@ const loadJobDetail = async () => {
   }
 }
 
+// 计算按学科分组的作业
+const groupedHomeworks = computed(() => {
+  if (!jobData.value || !jobData.value.Homeworks) return {}
+  
+  const groups: { [key: string]: Homework[] } = {}
+  jobData.value.Homeworks.forEach(homework => {
+    const subject = homework.Subject || 'Unknown Subject'
+    if (!groups[subject]) {
+      groups[subject] = []
+    }
+    groups[subject].push(homework)
+  })
+  
+  return groups
+})
+
+// 计算所有附件
+const allAttachments = computed(() => {
+  if (!githubAttachments.value) return []
+  
+  // 合并所有作业的附件
+  const all: Attachment[] = []
+  githubAttachments.value.forEach(attachments => {
+    attachments.forEach(attachment => {
+      // 避免重复添加相同名称的附件
+      if (!all.some(a => a.name === attachment.name)) {
+        all.push(attachment)
+      }
+    })
+  })
+  
+  return all
+})
+
 onMounted(() => {
   loadJobDetail()
 })

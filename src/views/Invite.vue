@@ -165,7 +165,7 @@ const acceptJob = async () => {
     // 尝试从localStorage读取现有的作业列表
     try {
       if (window.layui) {
-        const storedData = layui.data('jobs')
+        const storedData = window.layui.data('jobs')
         jobList = storedData[jobListKey] || []
       } else {
         const storedList = localStorage.getItem(jobListKey)
@@ -189,7 +189,7 @@ const acceptJob = async () => {
       // 保存更新后的作业列表
       try {
         if (window.layui) {
-          layui.data('jobs', {
+          window.layui.data('jobs', {
             key: jobListKey,
             value: jobList
           })

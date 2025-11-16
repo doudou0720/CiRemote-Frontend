@@ -53,15 +53,6 @@ const loading = ref(false)
 const error = ref('')
 const jobList = ref<JobData[]>([])
 
-// 解码base64字符串
-const decodeBase64 = (str: string): string => {
-  try {
-    return atob(str)
-  } catch (e) {
-    return str // 如果解码失败，返回原始字符串
-  }
-}
-
 // 获取作业索引数据
 const fetchJobIndex = async (repoUrl: string) => {
   try {
@@ -138,7 +129,7 @@ const loadJobs = async () => {
     
     try {
       if (window.layui) {
-        const storedData = layui.data('jobs')
+        const storedData = window.layui.data('jobs')
         storedJobs = storedData.jobList || []
       } else {
         const storedList = localStorage.getItem('jobList')

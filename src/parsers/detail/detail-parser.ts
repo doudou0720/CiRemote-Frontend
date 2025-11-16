@@ -1,10 +1,5 @@
 // 通用详细信息解析器
 
-import { parseStickyHomeworksDataV0, type StickyHomeworksDataV0 } from './detail-v0'
-
-// 支持的版本列表
-const SUPPORTED_VERSIONS = [0]
-
 // 定义作业详情数据接口
 interface DetailData {
   Description?: string;
