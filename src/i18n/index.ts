@@ -34,7 +34,8 @@ const i18n = createI18n({
       back: 'Back',
       exportDate: 'Export Date',
       homeworkList: 'Homework List',
-      noHomeworks: 'No homeworks available'
+      noHomeworks: 'No homeworks available',
+      attachments: 'Attachments'
     },
     zh: {
       home: '首页',
@@ -65,7 +66,8 @@ const i18n = createI18n({
       back: '返回',
       exportDate: '导出日期',
       homeworkList: '作业列表',
-      noHomeworks: '暂无作业'
+      noHomeworks: '暂无作业',
+      attachments: '附件'
     }
   }
 })

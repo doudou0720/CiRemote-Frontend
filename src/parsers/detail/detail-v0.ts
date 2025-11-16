@@ -1,5 +1,7 @@
 // StickyHomeworks JSON格式解析器 (版本0)
 
+import { filterXmlTags } from '@/utils/contentFilter';
+
 export interface Homework {
   Content: string;
   Subject: string;
@@ -105,7 +107,7 @@ export function parseStickyHomeworksDataV0(data: any): StickyHomeworksDataV0 {
     Description: data.Description,
     ExportDate: data.ExportDate,
     Homeworks: data.Homeworks.map((homework: any) => ({
-      Content: homework.Content,
+      Content: filterXmlTags(homework.Content),
       Subject: homework.Subject,
       DueTime: homework.DueTime,
       Tags: homework.Tags
