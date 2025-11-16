@@ -60,7 +60,7 @@ jobs:
         run: pnpm run lint
 
       - name: Run TypeScript type check
-        run: pnpm type-check || pnpm build --noEmit
+        run: npx tsc --noEmit
 
   code-review:
     name: Code Review Tools
