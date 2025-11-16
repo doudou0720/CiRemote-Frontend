@@ -13,17 +13,17 @@ const { t, locale } = useI18n()
 
 // 主题设置
 const theme = ref('light')
-const themes = [
+const themes = ref([
   { value: 'light', label: t('light') },
   { value: 'dark', label: t('dark') }
-]
+])
 
 // 语言设置
 const currentLanguage = ref(locale.value)
-const languages = [
+const languages = ref([
   { value: 'zh', label: '中文' },
   { value: 'en', label: 'English' }
-]
+])
 
 // 保存状态
 const saveStatus = ref({
@@ -42,15 +42,15 @@ const subSettingRefs = ref<{[key: string]: HTMLElement | null}>({})
 
 // 保存设置到localStorage
 const saveSettings = (field: string) => {
-  if (window.layui) {
+  if ((window as any).layui) {
     try {
-      const settings = window.layui.data('ciremote_settings', {
+      const settings = (window as any).layui.data('ciremote_settings', {
         key: 'user_settings'
       }) || {}
       
-      settings[field] = field === 'language' ? currentLanguage.value : theme.value
+      settings[field] = field === 'language' ? currentLanguage.value : theme.value;
       
-      window.layui.data('ciremote_settings', {
+      (window as any).layui.data('ciremote_settings', {
         key: 'user_settings',
         value: settings
       })
@@ -61,13 +61,13 @@ const saveSettings = (field: string) => {
         saveStatus.value[field as keyof typeof saveStatus.value] = false
       }, 2000)
       
-      console.log('设置已保存:', field, settings[field])
-    } catch (e: any) {
-      console.error('保存设置失败:', e)
+      console.log('设置已保存:', field, settings[field]);
+    } catch (e: unknown) {
+      console.error('保存设置失败:', e);
       // 使用layui弹窗显示错误信息
-      window.layui.use('layer', function() {
-        var layer = window.layui.layer;
-        layer.msg('设置保存失败: ' + (e.message || e.toString()), {
+      (window as any).layui.use('layer', function() {
+        const layer = (window as any).layui.layer;
+        layer.msg('设置保存失败: ' + (e instanceof Error ? e.message : String(e)), {
           icon: 2, // 错误图标
           time: 3000 // 3秒后自动关闭
         });
@@ -78,9 +78,9 @@ const saveSettings = (field: string) => {
 
 // 从localStorage加载设置
 const loadSettings = () => {
-  if (window.layui) {
+  if ((window as any).layui) {
     try {
-      const settings = window.layui.data('ciremote_settings', {
+      const settings = (window as any).layui.data('ciremote_settings', {
         key: 'user_settings'
       })
       
@@ -94,13 +94,13 @@ const loadSettings = () => {
           theme.value = settings.theme
         }
       }
-      console.log('设置已加载:', settings)
-    } catch (e: any) {
-      console.error('加载设置失败:', e)
+      console.log('设置已加载:', settings);
+    } catch (e: unknown) {
+      console.error('加载设置失败:', e);
       // 使用layui弹窗显示错误信息
-      window.layui.use('layer', function() {
-        var layer = window.layui.layer;
-        layer.msg('设置加载失败: ' + (e.message || e.toString()), {
+      (window as any).layui.use('layer', function() {
+        const layer = (window as any).layui.layer;
+        layer.msg('设置加载失败: ' + (e instanceof Error ? e.message : String(e)), {
           icon: 2, // 错误图标
           time: 3000 // 3秒后自动关闭
         });
@@ -170,8 +170,8 @@ const handleScroll = () => {
 watch(currentLanguage, (newLocale) => {
   locale.value = newLocale
   // 更新主题选项的标签
-  themes[0].label = t('light')
-  themes[1].label = t('dark')
+  themes.value[0].label = t('light')
+  themes.value[1].label = t('dark')
   // 保存到localStorage
   saveSettings('language')
 }, { immediate: true })
@@ -186,9 +186,9 @@ watch(theme, (newTheme) => {
 
 onMounted(() => {
   // 初始化layui
-  if (window.layui) {
-    window.layui.use(['element', 'data', 'layer'], function () {
-      var element = window.layui.element;
+  if ((window as any).layui) {
+    (window as any).layui.use(['element', 'data', 'layer'], function () {
+      const element = (window as any).layui.element;
       // 重新渲染元素
       element.render();
     });

@@ -1,32 +1,27 @@
-<script setup lang="ts">
-</script>
-
 <template>
-  <div class="main-container">
-    <!-- 主体内容 -->
-    <main class="main-content">
-      <div>
-        <h1>{{ $t('about') }} Page</h1>
-        <p>This is the about page for CiRemote application</p>
-      </div>
-    </main>
+  <div class="about">
+    <h1>{{ $t('about') }}</h1>
+    <p>{{ $t('aboutContent') }}</p>
   </div>
 </template>
 
+<script setup lang="ts">
+// About页面组件
+// 这是一个简单的关于页面，显示应用的介绍信息
+</script>
+
 <style scoped>
-.main-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+.about {
+  padding: 20px;
 }
 
-.main-content {
-  flex: 1;
-  margin-top: 60px; /* 为固定头部留出空间 */
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+h1 {
+  color: #333;
+  margin-bottom: 16px;
+}
+
+p {
+  color: #666;
+  line-height: 1.6;
 }
 </style>

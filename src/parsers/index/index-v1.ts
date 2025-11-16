@@ -1,52 +1,81 @@
 // 作业索引文件解析器 (版本1)
 
-export interface JobIndexV1 {
-  version: number;
+// 定义作业索引数据接口
+interface JobIndexData {
+  name: string;
   description: string;
-  author?: string;
-  last?: string;
-  [key: string]: any; // 允许其他属性
+  author: string;
+  last: string;
+  version: string;
+  [key: string]: unknown; // 允许其他属性
 }
 
 /**
- * 解析作业索引文件 (版本1)
- * @param data 从index.json解析出的原始数据
- * @returns 标准化的作业索引对象
- * @throws {Error} 当数据格式不正确时抛出错误
+ * 验证作业索引数据
+ * @param data - 要验证的数据
+ * @returns 验证结果
  */
-export function parseJobIndexV1(data: any): JobIndexV1 {
-  // 验证必需字段
-  if (!data.hasOwnProperty('description')) {
-    throw new Error('Missing required field: description')
-  }
+export const validateJobIndex = (data: unknown): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = []
   
-  if (typeof data.description !== 'string') {
-    throw new Error('Field "description" must be a string')
-  }
-  
-  // 验证可选字段类型
-  if (data.author !== undefined && typeof data.author !== 'string') {
-    throw new Error('Field "author" must be a string')
-  }
-  
-  if (data.last !== undefined && typeof data.last !== 'string') {
-    throw new Error('Field "last" must be a string')
-  }
-  
-  // 创建标准化的对象
-  const jobIndex: JobIndexV1 = {
-    version: 1, // 固定为版本1
-    description: data.description,
-    author: data.author,
-    last: data.last
-  };
-  
-  // 复制其他属性
-  Object.keys(data).forEach(key => {
-    if (!['version', 'description', 'author', 'last'].includes(key)) {
-      jobIndex[key] = data[key];
+  // 检查必需字段
+  if (!data || typeof data !== 'object') {
+    errors.push('Data must be an object');
+    return {
+      isValid: errors.length === 0,
+      errors
     }
-  });
+  }
   
-  return jobIndex;
+  const jobData = data as Record<string, unknown>;
+  
+  if (!jobData.name || typeof jobData.name !== 'string') {
+    errors.push('Missing or invalid "name" field')
+  }
+  
+  if (!jobData.description || typeof jobData.description !== 'string') {
+    errors.push('Missing or invalid "description" field')
+  }
+  
+  if (!jobData.author || typeof jobData.author !== 'string') {
+    errors.push('Missing or invalid "author" field')
+  }
+  
+  if (!jobData.last || typeof jobData.last !== 'string') {
+    errors.push('Missing or invalid "last" field')
+  }
+  
+  if (!jobData.version || typeof jobData.version !== 'string') {
+    errors.push('Missing or invalid "version" field')
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}
+
+/**
+ * 解析作业索引数据
+ * @param data - 要解析的数据
+ * @returns 解析后的数据
+ */
+export const parseJobIndex = (data: unknown): JobIndexData => {
+  // 验证数据
+  const validation = validateJobIndex(data)
+  if (!validation.isValid) {
+    throw new Error(`Invalid job index data: ${validation.errors.join(', ')}`)
+  }
+  
+  const jobData = data as Record<string, unknown>;
+  
+  // 解析并返回标准化的数据
+  return {
+    name: jobData.name as string,
+    description: jobData.description as string,
+    author: jobData.author as string,
+    last: jobData.last as string,
+    version: jobData.version as string,
+    ...jobData
+  }
 }

@@ -1,72 +1,87 @@
 // 通用作业索引解析器
 
-import { parseJobIndexV1, type JobIndexV1 } from './index-v1'
+// 定义作业索引数据接口
+interface JobIndexData {
+  name: string;
+  description: string;
+  author: string;
+  last: string;
+  version: string;
+  [key: string]: unknown; // 允许其他属性
+}
 
-// 支持的版本列表
-const SUPPORTED_VERSIONS = [1]
-
-export type JobIndex = JobIndexV1 // 当前只支持V1版本
+// 定义验证结果接口
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
 
 /**
- * 解析作业索引文件
- * @param data 从index.json解析出的原始数据
- * @returns 标准化的作业索引对象
- * @throws {Error} 当版本不支持或数据格式不正确时抛出错误
+ * 验证作业索引数据
+ * @param data - 要验证的数据
+ * @returns 验证结果
  */
-export function parseJobIndex(data: any): JobIndex {
-  // 检查是否存在版本号
-  if (!data.hasOwnProperty('version')) {
-    throw new Error('Missing required field: version')
+export const validateJobIndex = (data: unknown): ValidationResult => {
+  const errors: string[] = []
+  
+  // 检查必需字段
+  if (!data || typeof data !== 'object') {
+    errors.push('Data must be an object');
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
   }
   
-  // 检查版本是否受支持
-  if (!SUPPORTED_VERSIONS.includes(data.version)) {
-    throw new Error(`索引文件版本不支持: ${data.version}。仅支持版本 ${SUPPORTED_VERSIONS.join(', ')}。`)
+  const jobData = data as Record<string, unknown>;
+  
+  if (!jobData.name || typeof jobData.name !== 'string') {
+    errors.push('Missing or invalid "name" field')
   }
   
-  // 根据版本号选择相应的解析器
-  switch (data.version) {
-    case 1:
-      return parseJobIndexV1(data)
-    default:
-      throw new Error(`索引文件版本不支持: ${data.version}。仅支持版本 ${SUPPORTED_VERSIONS.join(', ')}。`)
+  if (!jobData.description || typeof jobData.description !== 'string') {
+    errors.push('Missing or invalid "description" field')
+  }
+  
+  if (!jobData.author || typeof jobData.author !== 'string') {
+    errors.push('Missing or invalid "author" field')
+  }
+  
+  if (!jobData.last || typeof jobData.last !== 'string') {
+    errors.push('Missing or invalid "last" field')
+  }
+  
+  if (!jobData.version || typeof jobData.version !== 'string') {
+    errors.push('Missing or invalid "version" field')
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
   }
 }
 
 /**
- * 验证作业索引对象
- * @param data 待验证的数据
- * @returns 验证结果
+ * 解析作业索引数据
+ * @param data - 要解析的数据
+ * @returns 解析后的数据
  */
-export function validateJobIndex(data: any): { isValid: boolean; errors: string[] } {
-  const errors: string[] = []
-  
-  if (!data.hasOwnProperty('version')) {
-    errors.push('Missing required field: version')
-    return {
-      isValid: false,
-      errors
-    }
+export const parseJobIndex = (data: unknown): JobIndexData => {
+  // 验证数据
+  const validation = validateJobIndex(data)
+  if (!validation.isValid) {
+    throw new Error(`Invalid job index data: ${validation.errors.join(', ')}`)
   }
   
-  if (!SUPPORTED_VERSIONS.includes(data.version)) {
-    errors.push(`索引文件版本不支持: ${data.version}。仅支持版本 ${SUPPORTED_VERSIONS.join(', ')}。`)
-    return {
-      isValid: false,
-      errors
-    }
-  }
+  const jobData = data as Record<string, unknown>;
   
-  // 根据版本号选择相应的验证器
-  switch (data.version) {
-    case 1:
-      // 对于V1版本，直接使用V1验证器
-      return { isValid: true, errors: [] }
-    default:
-      errors.push(`索引文件版本不支持: ${data.version}。仅支持版本 ${SUPPORTED_VERSIONS.join(', ')}。`)
-      return {
-        isValid: false,
-        errors
-      }
+  // 解析并返回标准化的数据
+  return {
+    name: jobData.name as string,
+    description: jobData.description as string,
+    author: jobData.author as string,
+    last: jobData.last as string,
+    version: jobData.version as string,
+    ...jobData
   }
 }

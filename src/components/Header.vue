@@ -111,9 +111,9 @@ watch(() => route.path, (newPath) => {
 
 onMounted(() => {
   // 初始化layui
-  if (window.layui) {
-    window.layui.use(['element'], function () {
-      var element = window.layui.element;
+  if ((window as any).layui) {
+    (window as any).layui.use(['element'], function () {
+      const element = (window as any).layui.element;
       // 重新渲染元素
       element.render();
     });
