@@ -4,8 +4,8 @@
 interface DetailData {
   Description?: string;
   ExportDate: string;
-  Homeworks: any[];
-  [key: string]: any; // 允许其他属性
+  Homeworks: unknown[];
+  [key: string]: unknown; // 允许其他属性
 }
 
 // 定义验证结果接口
@@ -19,15 +19,25 @@ interface ValidationResult {
  * @param data - 要验证的数据
  * @returns 验证结果
  */
-export const validateDetailData = (data: any): ValidationResult => {
+export const validateDetailData = (data: unknown): ValidationResult => {
   const errors: string[] = []
   
   // 检查必需字段
-  if (!data.ExportDate || typeof data.ExportDate !== 'string') {
+  if (!data || typeof data !== 'object') {
+    errors.push('Data must be an object')
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+  
+  const detailData = data as Record<string, unknown>;
+  
+  if (!detailData.ExportDate || typeof detailData.ExportDate !== 'string') {
     errors.push('Missing or invalid "ExportDate" field')
   }
   
-  if (!Array.isArray(data.Homeworks)) {
+  if (!Array.isArray(detailData.Homeworks)) {
     errors.push('Missing or invalid "Homeworks" field - must be an array')
   }
   
@@ -42,18 +52,19 @@ export const validateDetailData = (data: any): ValidationResult => {
  * @param data - 要解析的数据
  * @returns 解析后的数据
  */
-export const parseDetailData = (data: any): DetailData => {
+export const parseDetailData = (data: unknown): DetailData => {
   // 验证数据
   const validation = validateDetailData(data)
   if (!validation.isValid) {
     throw new Error(`Invalid detail data: ${validation.errors.join(', ')}`)
   }
   
-  // 解析并返回标准化的数据
+  const detailData = data as Record<string, unknown>;
+  
   return {
-    Description: data.Description,
-    ExportDate: data.ExportDate,
-    Homeworks: data.Homeworks,
-    ...data // 保留其他字段
+    Description: detailData.Description as string | undefined,
+    ExportDate: detailData.ExportDate as string,
+    Homeworks: detailData.Homeworks as unknown[],
+    ...detailData
   }
 }

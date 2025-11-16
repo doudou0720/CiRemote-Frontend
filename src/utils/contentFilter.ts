@@ -36,7 +36,7 @@ export function filterXmlTags(content: string): string {
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, 'text/html');
       return doc.body.textContent || doc.body.innerText || content;
-    } catch (e) {
+    } catch {
       // 如果DOM解析失败，使用正则表达式作为备选方案
       // Apply repeated replacement to fully remove fragmented or nested tags
       let filtered = content;
@@ -49,6 +49,6 @@ export function filterXmlTags(content: string): string {
     }
   }
   
-  // 如果不包含XML标签，直接返回原内容
+  // 如果没有XML标签，则直接返回原内容
   return content;
 }

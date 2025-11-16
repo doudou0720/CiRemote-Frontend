@@ -41,7 +41,7 @@ interface JobData {
   description?: string;
   author?: string;
   last?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // 声明layui的window扩展
@@ -63,7 +63,7 @@ const originalUrl = ref('') // 保存原始URL
 const decodeBase64 = (str: string): string => {
   try {
     return atob(str)
-  } catch (e) {
+  } catch (_e: unknown) {
     throw new Error('Invalid base64 encoded URL')
   }
 }
@@ -111,11 +111,12 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
       // 解析为标准化的作业索引对象
       const parsedData = parseJobIndex(data)
       return parsedData
-    } catch (jsonError) {
+    } catch (_jsonError: unknown) {
       throw new Error('Returned content is not valid JSON')
     }
-  } catch (err: any) {
-    throw new Error(`Failed to fetch GitHub index.json: ${err.message}`)
+  } catch (err: unknown) {
+    const error = err as Error;
+    throw new Error(`Failed to fetch GitHub index.json: ${error.message}`)
   }
 }
 
@@ -141,8 +142,9 @@ const loadJobData = async () => {
     // 获取作业索引数据
     const data = await fetchGithubIndex(decodedUrl)
     jobData.value = data
-  } catch (err: any) {
-    error.value = err.message || 'Failed to load job data'
+  } catch (err: unknown) {
+    const e = err as Error;
+    error.value = e.message || 'Failed to load job data'
   } finally {
     loading.value = false
   }
@@ -204,8 +206,9 @@ const acceptJob = async () => {
     
     // 跳转到作业列表页面
     router.push('/jobs')
-  } catch (err: any) {
-    error.value = err.message || 'Failed to accept job'
+  } catch (err: unknown) {
+    const e = err as Error;
+    error.value = e.message || 'Failed to accept job'
   }
 }
 

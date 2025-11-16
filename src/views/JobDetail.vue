@@ -82,7 +82,7 @@ import { parseDetailData, validateDetailData } from '@/parsers/detail/detail-par
 interface Attachment {
   name: string;
   download_url: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // 定义作业类型
@@ -91,7 +91,7 @@ interface Homework {
   Content: string;
   DueTime: string;
   Tags?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // 定义作业数据类型
@@ -99,7 +99,7 @@ interface JobData {
   Description?: string;
   ExportDate: string;
   Homeworks: Homework[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // 自定义Office文档预览函数
@@ -130,7 +130,7 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const jobData = ref<JobData | null>(null)
-const githubAttachments = ref<Attachment[][]>([])
+const githubAttachments = ref<Attachment[]>([])
 
 // 返回上一页
 const goBack = () => {
@@ -141,7 +141,7 @@ const goBack = () => {
 const decodeBase64 = (str: string): string => {
   try {
     return atob(str)
-  } catch (e) {
+  } catch (_e: unknown) {
     return str // 如果解码失败，返回原始字符串
   }
 }
@@ -151,7 +151,7 @@ const formatExportDate = (dateString: string): string => {
   try {
     const date = new Date(dateString);
     return date.toLocaleString();
-  } catch (e) {
+  } catch (_e: unknown) {
     return dateString;
   }
 }
@@ -161,7 +161,7 @@ const formatDueTime = (dateString: string): string => {
   try {
     const date = new Date(dateString);
     return date.toLocaleString();
-  } catch (e) {
+  } catch (_e: unknown) {
     return dateString;
   }
 }
@@ -211,9 +211,10 @@ const fetchGithubAttachments = async (repoUrl: string, homeworkPath: string) => 
     const files = await response.json()
     
     // 过滤掉目录，只保留文件
-    return files.filter((file: any) => file.type === 'file' && file.name !== 'index.json')
-  } catch (err: any) {
-    console.error('Failed to fetch GitHub attachments:', err)
+    return files.filter((file: { type: string; name: string }) => file.type === 'file' && file.name !== 'index.json')
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Failed to fetch GitHub attachments:', error)
     return []
   }
 }
@@ -236,8 +237,9 @@ const fetchJobData = async (url: string) => {
     }
     
     return parseDetailData(data)
-  } catch (err: any) {
-    throw new Error(`Failed to fetch job data: ${err.message}`)
+  } catch (err: unknown) {
+    const error = err as Error;
+    throw new Error(`Failed to fetch job data: ${error.message}`)
   }
 }
 
@@ -261,45 +263,35 @@ const loadJobDetail = async () => {
     
     // 获取作业数据
     const data = await fetchJobData(decodedUrl)
-    jobData.value = data
+    jobData.value = data as unknown as JobData
     
-    // 检查是否是GitHub URL，如果是则获取附件
+    // 检查是否是GitHub URL，如果是则获取附件列表
     if (decodedUrl.startsWith('https://raw.githubusercontent.com/')) {
       // 从raw URL解析GitHub仓库信息
-      const urlObj = new URL(decodedUrl)
-      const pathParts = urlObj.pathname.split('/').filter(part => part)
+      const urlObj = new URL(decodedUrl);
+      const pathParts = urlObj.pathname.split('/').filter(part => part);
       
-      if (pathParts.length >= 3) {
-        const user = pathParts[0]
-        const repo = pathParts[1]
-        // 从路径中提取branch name（第三个路径段）
-        const branch = pathParts[2] || 'main'
-        // 重构GitHub仓库URL，添加ref参数
-        const repoUrl = `https://github.com/${user}/${repo}?ref=${branch}`
+      if (pathParts.length >= 4) { // 至少要有 user/repo/branch/path/index.json
+        const user = pathParts[0];
+        const repo = pathParts[1];
+        const branch = pathParts[2];
+        // 构建API请求路径（不含index.json）
+        const dirPath = pathParts.slice(3, -1).join('/');
+        const repoUrl = `https://github.com/${user}/${repo}`;
         
-        // 只请求一次附件，获取作业根目录下的所有文件
-        const pathSegments = urlObj.pathname.split('/').filter(part => part)
-        if (pathSegments.length >= 3) {
-          // 构建作业根目录路径 (去掉最开始的user, repo, branch和最后的index.json)
-          const basePath = pathSegments.slice(3, pathSegments.length - 1).join('/')
-          
-          // 获取一次附件即可
-          const attachments = await fetchGithubAttachments(repoUrl, basePath)
-          
-          // 将附件分配给所有作业（因为它们共享同一目录）
-          const attachmentsMap: Attachment[][] = []
-          if (jobData.value.Homeworks) {
-            jobData.value.Homeworks.forEach((_: any, index: number) => {
-              attachmentsMap[index] = attachments
-            })
-          }
-          
-          githubAttachments.value = attachmentsMap
-        }
+        // 直接调用并赋值给一个临时变量用于后续计算
+        const attachments = await fetchGithubAttachments(
+          `${repoUrl}?ref=${branch}`, 
+          dirPath
+        );
+        
+        // 将附件附加到 jobData 上以便 allAttachments 计算
+        (jobData.value as JobData & { _fetchedAttachments?: Attachment[] })._fetchedAttachments = attachments;
       }
     }
-  } catch (err: any) {
-    error.value = err.message || 'Failed to load job detail'
+  } catch (err: unknown) {
+    const e = err as Error;
+    error.value = e.message || 'Failed to load job detail'
   } finally {
     loading.value = false
   }
@@ -323,20 +315,22 @@ const groupedHomeworks = computed(() => {
 
 // 计算所有附件
 const allAttachments = computed(() => {
-  if (!githubAttachments.value) return []
+  if (!jobData.value) return [];
   
-  // 合并所有作业的附件
-  const all: Attachment[] = []
-  githubAttachments.value.forEach(attachments => {
-    attachments.forEach(attachment => {
-      // 避免重复添加相同名称的附件
-      if (!all.some(a => a.name === attachment.name)) {
-        all.push(attachment)
-      }
-    })
-  })
+  const jobWithAttachments = jobData.value as JobData & { _fetchedAttachments?: Attachment[] };
+  const attachments = jobWithAttachments._fetchedAttachments || [];
   
-  return all
+  // 去重：避免相同名称的附件重复显示
+  const seen = new Set<string>();
+  const unique: Attachment[] = [];
+  attachments.forEach(att => {
+    if (!seen.has(att.name)) {
+      seen.add(att.name);
+      unique.push(att);
+    }
+  });
+  
+  return unique;
 })
 
 onMounted(() => {

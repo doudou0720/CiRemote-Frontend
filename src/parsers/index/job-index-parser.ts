@@ -7,7 +7,7 @@ interface JobIndexData {
   author: string;
   last: string;
   version: string;
-  [key: string]: any; // 允许其他属性
+  [key: string]: unknown; // 允许其他属性
 }
 
 // 定义验证结果接口
@@ -21,27 +21,37 @@ interface ValidationResult {
  * @param data - 要验证的数据
  * @returns 验证结果
  */
-export const validateJobIndex = (data: any): ValidationResult => {
+export const validateJobIndex = (data: unknown): ValidationResult => {
   const errors: string[] = []
   
   // 检查必需字段
-  if (!data.name || typeof data.name !== 'string') {
+  if (!data || typeof data !== 'object') {
+    errors.push('Data must be an object');
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+  
+  const jobData = data as Record<string, unknown>;
+  
+  if (!jobData.name || typeof jobData.name !== 'string') {
     errors.push('Missing or invalid "name" field')
   }
   
-  if (!data.description || typeof data.description !== 'string') {
+  if (!jobData.description || typeof jobData.description !== 'string') {
     errors.push('Missing or invalid "description" field')
   }
   
-  if (!data.author || typeof data.author !== 'string') {
+  if (!jobData.author || typeof jobData.author !== 'string') {
     errors.push('Missing or invalid "author" field')
   }
   
-  if (!data.last || typeof data.last !== 'string') {
+  if (!jobData.last || typeof jobData.last !== 'string') {
     errors.push('Missing or invalid "last" field')
   }
   
-  if (!data.version || typeof data.version !== 'string') {
+  if (!jobData.version || typeof jobData.version !== 'string') {
     errors.push('Missing or invalid "version" field')
   }
   
@@ -56,20 +66,22 @@ export const validateJobIndex = (data: any): ValidationResult => {
  * @param data - 要解析的数据
  * @returns 解析后的数据
  */
-export const parseJobIndex = (data: any): JobIndexData => {
+export const parseJobIndex = (data: unknown): JobIndexData => {
   // 验证数据
   const validation = validateJobIndex(data)
   if (!validation.isValid) {
     throw new Error(`Invalid job index data: ${validation.errors.join(', ')}`)
   }
   
+  const jobData = data as Record<string, unknown>;
+  
   // 解析并返回标准化的数据
   return {
-    name: data.name,
-    description: data.description,
-    author: data.author,
-    last: data.last,
-    version: data.version,
-    ...data // 保留其他字段
+    name: jobData.name as string,
+    description: jobData.description as string,
+    author: jobData.author as string,
+    last: jobData.last as string,
+    version: jobData.version as string,
+    ...jobData
   }
 }

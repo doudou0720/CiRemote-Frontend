@@ -38,7 +38,7 @@ import { parseJobIndex, validateJobIndex } from '@/parsers/index/job-index-parse
 // 定义类型
 interface JobData {
   url: string;
-  data: any;
+  data: Record<string, unknown>;
 }
 
 // 声明layui的window扩展
@@ -106,8 +106,9 @@ const fetchJobIndex = async (repoUrl: string) => {
     }
     
     return parseJobIndex(data)
-  } catch (err: any) {
-    throw new Error(`Failed to fetch job index: ${err.message}`)
+  } catch (err: unknown) {
+    const error = err as Error;
+    throw new Error(`Failed to fetch job index: ${error.message}`)
   }
 }
 
@@ -128,8 +129,8 @@ const loadJobs = async () => {
     let storedJobs: JobData[] = []
     
     try {
-      if (window.layui) {
-        const storedData = window.layui.data('jobs')
+      if ((window as any).layui) {
+        const storedData = (window as any).layui.data('jobs')
         storedJobs = storedData.jobList || []
       } else {
         const storedList = localStorage.getItem('jobList')
@@ -157,8 +158,9 @@ const loadJobs = async () => {
     }))
     
     jobList.value = jobsWithDetails
-  } catch (err: any) {
-    error.value = err.message || 'Failed to load jobs'
+  } catch (err: unknown) {
+    const e = err as Error;
+    error.value = e.message || 'Failed to load jobs'
   } finally {
     loading.value = false
   }
