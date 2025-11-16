@@ -17,14 +17,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Install pnpm
-        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -34,11 +36,10 @@ jobs:
 
       - name: Notify Vercel
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: vercel/repository-dispatch@v2
+        uses: vercel/action@v28
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: build-completed
-          client-payload: '{"branch": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-comment: false
 
   lint:
     name: Lint and Code Quality
@@ -48,14 +49,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Install pnpm
-        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -64,7 +67,7 @@ jobs:
         run: pnpm run lint
 
       - name: Run TypeScript type check
-        run: pnpm run type-check || pnpm run build --noEmit
+        run: pnpm type-check || pnpm build --noEmit
 
   code-review:
     name: Code Review Tools
@@ -75,14 +78,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Install pnpm
-        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
