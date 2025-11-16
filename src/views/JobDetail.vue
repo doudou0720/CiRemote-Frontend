@@ -116,7 +116,13 @@ const getOfficePreviewUrl = (url: string): string => {
 // 过滤XML标签的简单实现
 const filterXmlTags = (content: string): string => {
   if (!content) return '';
-  return content.replace(/<[^>]*>/g, '');
+  let prev;
+  let filtered = content;
+  do {
+    prev = filtered;
+    filtered = filtered.replace(/<[^>]*>/g, '');
+  } while (filtered !== prev);
+  return filtered;
 };
 
 const route = useRoute()
