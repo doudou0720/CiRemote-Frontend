@@ -10,6 +10,22 @@
     <div v-else-if="jobData" class="job-detail">
       <h2>{{ jobData.Description || $t('unnamedJob') }}</h2>
       <p class="export-date">{{ $t('exportDate') }}: {{ formatExportDate(jobData.ExportDate) }}</p>
+      
+      <!-- 添加分享链接 -->
+      <div class="share-section">
+        <p class="share-label">{{ $t('shareLink') }}:</p>
+        <div class="share-link-container">
+          <input 
+            type="text" 
+            :value="shareLink" 
+            readonly 
+            class="share-link-input"
+            @focus="onFocus"
+          />
+          <button @click="copyShareLink" class="copy-button">{{ $t('copy') }}</button>
+        </div>
+      </div>
+      
       <div class="homeworks-list">
         <h3>{{ $t('homeworkList') }}</h3>
         <div v-if="jobData.Homeworks && jobData.Homeworks.length > 0" class="homeworks">
@@ -131,6 +147,40 @@ const loading = ref(false)
 const error = ref('')
 const jobData = ref<JobData | null>(null)
 const githubAttachments = ref<Attachment[]>([])
+
+// 计算分享链接
+const shareLink = computed(() => {
+  const currentRoute = router.resolve({
+    path: '/',
+    query: {
+      jump: route.fullPath
+    }
+  })
+  return `${window.location.origin}${currentRoute.href}`
+})
+
+// 复制分享链接
+const copyShareLink = () => {
+  navigator.clipboard.writeText(shareLink.value)
+    .then(() => {
+      alert('链接已复制到剪贴板')
+    })
+    .catch(() => {
+      // 降级方案：选择文本
+      const input = document.querySelector('.share-link-input') as HTMLInputElement
+      if (input) {
+        input.select()
+        document.execCommand('copy')
+        alert('链接已复制到剪贴板')
+      }
+    })
+}
+
+// 处理输入框聚焦事件
+const onFocus = (event: FocusEvent) => {
+  const target = event.target as HTMLInputElement
+  target.select()
+}
 
 // 返回上一页
 const goBack = () => {
@@ -446,17 +496,74 @@ onMounted(() => {
 
 .actions {
   margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 .back-button {
-  padding: 8px 16px;
-  background-color: #2196f3;
+  padding: 10px 20px;
+  background-color: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 
+.back-button:hover {
+  background-color: #0056b3;
+}
+
+/* 分享链接样式 */
+.share-section {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.share-label {
+  margin: 0 0 10px 0;
+  font-weight: bold;
+  color: #495057;
+}
+
+.share-link-container {
+  display: flex;
+  gap: 10px;
+}
+
+.share-link-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.copy-button {
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.copy-button:hover {
+  background-color: #218838;
+}
+
+@media (max-width: 768px) {
+  .share-link-container {
+    flex-direction: column;
+  }
+  
+  .copy-button {
+    align-self: flex-start;
+  }
+}
 
 .attachment-list {
   list-style-type: none;
@@ -476,4 +583,5 @@ onMounted(() => {
 .attachment-list a:hover {
   text-decoration: underline;
 }
+
 </style>

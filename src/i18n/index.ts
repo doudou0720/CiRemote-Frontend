@@ -35,7 +35,9 @@ const i18n = createI18n({
       exportDate: 'Export Date',
       homeworkList: 'Homework List',
       noHomeworks: 'No homeworks available',
-      attachments: 'Attachments'
+      attachments: 'Attachments',
+      shareLink: 'Share Link',
+      copy: 'Copy'
     },
     zh: {
       home: '首页',
@@ -67,7 +69,9 @@ const i18n = createI18n({
       exportDate: '导出日期',
       homeworkList: '作业列表',
       noHomeworks: '暂无作业',
-      attachments: '附件'
+      attachments: '附件',
+      shareLink: '分享链接',
+      copy: '复制'
     }
   }
 })

@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import HelloWorld from '@/components/HelloWorld.vue'
 
 // 定义响应式数据
 const count = ref(0)
 const message = ref('Hello Vue 3 + TypeScript + Vite')
+
+// 获取路由和路由器实例
+const route = useRoute()
+const router = useRouter()
 
 // 定义函数
 const increment = () => {
@@ -22,9 +27,25 @@ const fetchData = async (): Promise<void> => {
   }
 }
 
+// 检查jump参数并跳转
+const checkJumpParameter = () => {
+  const jump = route.query.jump as string
+  if (jump) {
+    // 移除jump参数并跳转到指定路径
+    const newQuery = { ...route.query }
+    delete newQuery.jump
+    
+    router.replace({
+      path: jump,
+      query: newQuery
+    })
+  }
+}
+
 // 生命周期钩子
 onMounted(() => {
   console.log('Home component mounted')
+  checkJumpParameter()
 })
 
 // 导出需要在模板中使用的变量和函数
