@@ -1,5 +1,52 @@
 import { createI18n } from 'vue-i18n'
 
+/**
+ * Internationalization (i18n) configuration for the application.
+ *
+ * Purpose
+ * - Centralizes UI strings used across the single-page application (SPA).
+ * - Provides English ("en") and Simplified Chinese ("zh") translations with a fallback to English.
+ * - Uses the Composition API compatible mode (legacy: false).
+ *
+ * Structure
+ * - locale: "zh" (primary)
+ * - fallbackLocale: "en"
+ * - messages: an object keyed by locale code containing translation key/value pairs
+ *
+ * Notable translation keys (non-exhaustive)
+ * - Navigation / layout: home, about, settings, back
+ * - Job / homework: jobs, inviteJob, unnamedJob, jobDetails, jobDetail, jobContent, noJobData, noJobs, homeworkList, noHomeworks, exportDate
+ * - CRUD / actions: save, cancel, delete, edit, add, confirm, close, loading, retry, copy
+ * - Status / metadata: author, lastUpdated, attachments, online
+ * - Device / web settings: webSettings, deviceManagement, deviceList, deviceConfig, deviceConfigSettings, deviceConfig, configItem1, configItem2, enterConfig
+ * - Appearance / locale: language, theme, light, dark, languageSettings, selectLanguage, themeSettings, selectTheme
+ * - Sharing: shareLink
+ *
+ * Remarks and maintenance notes
+ * - New keys have been added (see "Notable translation keys"). When introducing new UI text, add a key here and provide translations for all supported locales.
+ * - The codebase currently appears to add navigation- and sharing-related keys (e.g., shareLink) without accompanying developer documentation describing:
+ *   - The intended SPA navigation pattern (how translated routes / labels should map to router behavior, responsibilities for route translation, canonical route names, and deep-link handling).
+ *   - The semantics and security considerations of shareLink (what the link contains, whether it embeds sensitive tokens, expiry behavior, and how it should be generated/consumed).
+ * - TODO: Add a short developer doc describing:
+ *   1. How to add or change i18n keys and where to update translation files.
+ *   2. Conventions for naming keys (e.g., namespace by feature: jobs.*, settings.*, device.*).
+ *   3. How route labels are derived from translation keys (if routes are localized) and how to handle fallbacks.
+ *   4. Security and UX considerations for shareLink generation and consumption.
+ *
+ * Guidance for contributors
+ * - When adding a new UI string:
+ *   1. Choose a clear, namespaced key (e.g., "jobs.createButton" or "device.config.enter").
+ *   2. Add the key to every locale in this messages object (even if temporarily using the English text).
+ *   3. Update unit / integration tests that assert on rendered text where applicable.
+ * - Prefer keeping text keys stable; refactor keys only when necessary and update all usages.
+ *
+ * Example (usage)
+ * - In script setup: const label = i18n.global.t('home');
+ * - In templates (Vue): {{ $t('home') }}
+ *
+ * @remarks
+ * This comment documents the i18n configuration and provides maintenance guidance. Keep this documentation in sync with changes to locales, new features (especially shareable links and route localization), and any changes to the i18n library configuration.
+ */
 const i18n = createI18n({
   legacy: false,
   locale: 'zh',
@@ -37,7 +84,26 @@ const i18n = createI18n({
       noHomeworks: 'No homeworks available',
       attachments: 'Attachments',
       shareLink: 'Share Link',
-      copy: 'Copy'
+      copy: 'Copy',
+      // 新增的翻译键
+      class: 'Class',
+      webSettings: 'Web Settings',
+      deviceManagement: 'Device Management',
+      language: 'Language',
+      theme: 'Theme',
+      light: 'Light',
+      dark: 'Dark',
+      languageSettings: 'Language Settings',
+      selectLanguage: 'Select Language',
+      themeSettings: 'Theme Settings',
+      selectTheme: 'Select Theme',
+      deviceList: 'Device List',
+      deviceConfig: 'Device Config',
+      deviceConfigSettings: 'Device Configuration Settings',
+      configItem1: 'Configuration Item 1',
+      configItem2: 'Configuration Item 2',
+      enterConfig: 'Enter configuration',
+      online: 'Online'
     },
     zh: {
       home: '首页',
@@ -71,7 +137,26 @@ const i18n = createI18n({
       noHomeworks: '暂无作业',
       attachments: '附件',
       shareLink: '分享链接',
-      copy: '复制'
+      copy: '复制',
+      // 新增的翻译键
+      class: '班级',
+      webSettings: '网页设置',
+      deviceManagement: '设备管理',
+      language: '语言',
+      theme: '主题',
+      light: '浅色',
+      dark: '深色',
+      languageSettings: '语言设置',
+      selectLanguage: '选择语言',
+      themeSettings: '主题设置',
+      selectTheme: '选择主题',
+      deviceList: '设备列表',
+      deviceConfig: '设备配置',
+      deviceConfigSettings: '设备配置设置',
+      configItem1: '配置项1',
+      configItem2: '配置项2',
+      enterConfig: '输入配置',
+      online: '在线'
     }
   }
 })

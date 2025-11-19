@@ -65,15 +65,22 @@ const fetchJobIndex = async (repoUrl: string) => {
       }
       
       const text = await response.text()
-      const data = JSON.parse(text)
-      
-      // 验证并解析作业索引数据
-      const validation = validateJobIndex(data)
-      if (!validation.isValid) {
-        throw new Error(validation.errors.join(', '))
+      try {
+        const data = JSON.parse(text)
+        
+        // 验证并解析作业索引数据
+        const validation = validateJobIndex(data)
+        if (!validation.isValid) {
+          throw new Error(validation.errors.join(', '))
+        }
+        
+        return parseJobIndex(data)
+      } catch (parseError: unknown) {
+        const error = parseError as Error;
+        // 显示更详细的错误信息，包括HTTP状态和实际内容
+        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Parse error: ${error.message}`)
       }
-      
-      return parseJobIndex(data)
     }
     
     // 处理GitHub URL

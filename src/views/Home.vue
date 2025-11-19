@@ -2,6 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HelloWorld from '@/components/HelloWorld.vue'
+// 导入useI18n
+import { useI18n } from 'vue-i18n'
+
+// 使用useI18n
+const { t } = useI18n()
 
 // 定义响应式数据
 const count = ref(0)
@@ -76,7 +81,7 @@ defineExpose({
     <footer class="layui-footer footer-container">
       <div class="layui-tab" lay-filter="footerTab">
         <ul class="layui-tab-title">
-          <li class="layui-this">{{ $t('class') }}</li>
+          <li class="layui-this">{{ t('class') }}</li>
         </ul>
       </div>
     </footer>

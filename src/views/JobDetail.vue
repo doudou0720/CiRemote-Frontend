@@ -278,15 +278,22 @@ const fetchJobData = async (url: string) => {
     }
     
     const text = await response.text()
-    const data = JSON.parse(text)
-    
-    // 验证并解析详细信息数据
-    const validation = validateDetailData(data)
-    if (!validation.isValid) {
-      throw new Error(`Invalid detail data: ${validation.errors.join(', ')}`)
+    try {
+      const data = JSON.parse(text)
+      
+      // 验证并解析详细信息数据
+      const validation = validateDetailData(data)
+      if (!validation.isValid) {
+        throw new Error(`Invalid detail data: ${validation.errors.join(', ')}`)
+      }
+      
+      return parseDetailData(data)
+    } catch (parseError: unknown) {
+      const error = parseError as Error;
+      // 显示更详细的错误信息，包括HTTP状态和实际内容
+      const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+      throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Parse error: ${error.message}`)
     }
-    
-    return parseDetailData(data)
   } catch (err: unknown) {
     const error = err as Error;
     throw new Error(`Failed to fetch job data: ${error.message}`)
@@ -497,7 +504,17 @@ onMounted(() => {
 .actions {
   margin-top: 20px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start; /* Align with content flow */
+  gap: 10px; /* Consistent spacing */
+}
+
+.back-button {
+  padding: 10px 20px;
+  background-color: #28a745; /* Consistent with copy button */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .back-button {

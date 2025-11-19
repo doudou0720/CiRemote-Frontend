@@ -112,7 +112,9 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
       const parsedData = parseJobIndex(data)
       return parsedData
     } catch (_jsonError: unknown) {
-      throw new Error('Returned content is not valid JSON')
+      // 显示更详细的错误信息，包括HTTP状态和实际内容
+      const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+      throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}"`)
     }
   } catch (err: unknown) {
     const error = err as Error;
