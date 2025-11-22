@@ -100,6 +100,7 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
     // 尝试解析响应为JSON，而不严格依赖Content-Type
     const text = await response.text()
     try {
+      // 尝试直接解析
       const data = JSON.parse(text)
       
       // 验证并解析作业索引数据
@@ -112,9 +113,35 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
       const parsedData = parseJobIndex(data)
       return parsedData
     } catch (_jsonError: unknown) {
-      // 显示更详细的错误信息，包括HTTP状态和实际内容
-      const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
-      throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}"`)
+      try {
+        // 尝试提取第一个 { 到最后一个 } 之间的内容
+        const start = text.indexOf('{')
+        const end = text.lastIndexOf('}')
+        
+        if (start === -1 || end === -1 || start >= end) {
+          throw new Error('No JSON object boundaries found')
+        }
+        
+        const jsonText = text.substring(start, end + 1)
+        console.log('Extracted JSON text:', jsonText)
+        
+        // 尝试解析提取的内容
+        const data = JSON.parse(jsonText)
+        
+        // 验证并解析作业索引数据
+        const validation = validateJobIndex(data)
+        if (!validation.isValid) {
+          throw new Error(validation.errors.join(', '))
+        }
+        
+        // 解析为标准化的作业索引对象
+        const parsedData = parseJobIndex(data)
+        return parsedData
+      } catch (extractError: unknown) {
+        // 显示更详细的错误信息，包括HTTP状态和实际内容
+        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Extraction also failed: ${(extractError as Error).message}`)
+      }
     }
   } catch (err: unknown) {
     const error = err as Error;
