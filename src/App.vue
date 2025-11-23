@@ -6,18 +6,11 @@ import { Analytics } from '@vercel/analytics/vue'
 import { SpeedInsights } from '@vercel/speed-insights/vue';
 
 const route = useRoute()
-
-// 当路由为/jobs、/jobs/invite或/jobs/detail时隐藏Header
-const hideHeader = computed(() => {
-  return route.path === '/jobs' || 
-         route.path === '/jobs/invite' || 
-         route.path === '/jobs/detail'
-})
 </script>
 
 <template>
   <div id="app">
-    <Header v-if="!hideHeader" />
+    <Header />
     <router-view />
     <Analytics />
     <SpeedInsights />

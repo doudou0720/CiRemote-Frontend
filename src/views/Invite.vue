@@ -208,12 +208,29 @@ const acceptJob = async () => {
       console.warn('Failed to read job list from storage:', e)
     }
     
-    // 检查是否已存在相同的URL
-    const exists = jobList.some(job => job.url === originalUrl.value)
+    // 解码URL参数，使用解码后的URL进行存储
+    let decodedUrl = originalUrl.value;
+    try {
+      decodedUrl = decodeBase64(decodeURIComponent(originalUrl.value));
+    } catch (e) {
+      console.warn('Failed to decode URL, using original URL:', e);
+    }
+    
+    // 检查是否已存在相同的URL（使用解码后的URL进行比较）
+    const exists = jobList.some(job => {
+      try {
+        const jobDecodedUrl = decodeBase64(decodeURIComponent(job.url));
+        return jobDecodedUrl === decodedUrl;
+      } catch (_e) {
+        // 如果解码失败，则直接比较原始URL
+        return job.url === decodedUrl;
+      }
+    });
+    
     if (!exists) {
-      // 添加新作业到列表
+      // 添加新作业到列表，使用解码后的URL
       jobList.push({
-        url: originalUrl.value,
+        url: decodedUrl,
         data: jobData.value
       })
       

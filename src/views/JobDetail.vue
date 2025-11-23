@@ -8,23 +8,13 @@
       {{ error }}
     </div>
     <div v-else-if="jobData" class="job-detail">
-      <h2>{{ jobData.Description || $t('unnamedJob') }}</h2>
-      <p class="export-date">{{ $t('exportDate') }}: {{ formatExportDate(jobData.ExportDate) }}</p>
-      
-      <!-- 添加分享链接 -->
-      <div class="share-section">
-        <p class="share-label">{{ $t('shareLink') }}:</p>
-        <div class="share-link-container">
-          <input 
-            type="text" 
-            :value="shareLink" 
-            readonly 
-            class="share-link-input"
-            @focus="onFocus"
-          />
-          <button @click="copyShareLink" class="copy-button">{{ $t('copy') }}</button>
-        </div>
+      <div class="job-detail-header">
+        <h2>{{ jobData.Description || $t('unnamedJob') }}</h2>
+        <button @click="scrollToShareSectionAndShow" class="share-toggle-button" :title="$t('shareLink')">
+          <i class="layui-icon layui-icon-share"></i>
+        </button>
       </div>
+      <p class="export-date">{{ $t('exportDate') }}: {{ formatExportDate(jobData.ExportDate) }}</p>
       
       <div class="homeworks-list">
         <h3>{{ $t('homeworkList') }}</h3>
@@ -49,8 +39,8 @@
               </div>
               <div v-if="homework.Tags && homework.Tags.length > 0" class="homework-tags">
                 <span 
-                  v-for="(tag, tagIndex) in homework.Tags" 
-                  :key="tagIndex"
+                  v-for="tag in homework.Tags" 
+                  :key="tag"
                   class="tag"
                 >
                   {{ tag }}
@@ -63,25 +53,44 @@
           {{ $t('noHomeworks') }}
         </div>
       </div>
-      <!-- 统一显示所有附件，不分学科 -->
-      <div v-if="allAttachments && allAttachments.length > 0" class="all-attachments">
+      
+      <!-- 附件列表 -->
+      <div v-if="allAttachments.length > 0" class="attachments-section">
         <h3>{{ $t('attachments') }}</h3>
         <ul class="attachment-list">
           <li v-for="attachment in allAttachments" :key="attachment.name">
             <a 
               :href="getPreviewUrl(attachment)" 
-              target="_blank" 
-              rel="noopener noreferrer"
+              target="_blank"
+              :title="attachment.name"
             >
               {{ attachment.name }}
             </a>
           </li>
         </ul>
       </div>
+      
+      <!-- 添加分享链接 -->
+      <div v-if="showShareSection" id="share-section" class="share-section">
+        <p class="share-label">{{ $t('shareLink') }}:</p>
+        <div class="share-link-container">
+          <input 
+            type="text" 
+            :value="shareLink" 
+            readonly 
+            class="share-link-input"
+            @focus="onFocus"
+          />
+          <button @click="copyShareLink" class="copy-button">{{ $t('copy') }}</button>
+        </div>
+      </div>
+      
     </div>
     <div v-else class="no-data">
       {{ $t('noJobData') }}
     </div>
+    
+    <!-- 添加返回按钮 -->
     <div class="actions">
       <button @click="goBack" class="back-button">{{ $t('back') }}</button>
     </div>
@@ -141,23 +150,66 @@ const filterXmlTags = (content: string): string => {
   return filtered;
 };
 
+// 声明响应式变量
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const jobData = ref<JobData | null>(null)
 const githubAttachments = ref<Attachment[]>([])
+const showShareSection = ref(false) // 添加控制分享区域显示的变量
 
-// 计算分享链接
+// 计算分享链接（改为邀请链接）
 const shareLink = computed(() => {
-  const currentRoute = router.resolve({
-    path: '/',
-    query: {
-      jump: route.fullPath
+  // 获取当前作业的原始URL（从路由参数中）
+  const jobUrl = route.query.url as string || '';
+  
+  // 解码当前URL得到原始URL
+  const decodedUrl = decodeBase64(decodeURIComponent(jobUrl));
+  
+  // 确定要传递给Invite页面的URL
+  let inviteUrl = decodedUrl;
+  
+  // 如果是raw.githubusercontent.com的URL，需要转换回GitHub仓库URL
+  if (decodedUrl.startsWith('https://raw.githubusercontent.com/')) {
+    try {
+      const urlObj = new URL(decodedUrl);
+      const pathParts = urlObj.pathname.split('/').filter(part => part);
+      
+      if (pathParts.length >= 2) {
+        const user = pathParts[0];
+        const repo = pathParts[1];
+        // 转换为GitHub仓库URL
+        inviteUrl = `https://github.com/${user}/${repo}`;
+      }
+    } catch (e) {
+      console.error('Error parsing raw URL:', e);
     }
-  })
-  return `${window.location.origin}${currentRoute.href}`
-})
+  }
+  
+  // 对URL进行Base64编码
+  const encodedUrl = encodeURIComponent(btoa(inviteUrl));
+  
+  const inviteRoute = router.resolve({
+    path: '/jobs/invite',
+    query: {
+      url: encodedUrl // 传递Base64编码后的GitHub仓库URL作为参数
+    }
+  });
+  
+  return `${window.location.origin}${inviteRoute.href}`;
+});
+
+// 滚动到分享链接区域并显示它
+const scrollToShareSectionAndShow = () => {
+  showShareSection.value = true;
+  setTimeout(() => {
+    const shareSection = document.getElementById('share-section');
+    if (shareSection) {
+      shareSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, 100);
+}
 
 // 复制分享链接
 const copyShareLink = () => {
@@ -422,6 +474,26 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
+.job-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.share-toggle-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 5px;
+  color: #666;
+}
+
+.share-toggle-button:hover {
+  color: #333;
+}
+
 .homeworks-list h3 {
   margin: 20px 0 10px 0;
 }
@@ -600,5 +672,4 @@ onMounted(() => {
 .attachment-list a:hover {
   text-decoration: underline;
 }
-
 </style>
