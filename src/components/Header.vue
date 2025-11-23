@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, nextTick } from 'vue'
+import { onMounted, ref, watch, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -26,6 +26,20 @@ const indicatorStyle = ref({
 // 获取导航项的DOM元素
 const navItems = ref<HTMLElement[]>([])
 
+// 计算属性：判断当前是否在jobs相关路由
+const isJobsRoute = computed(() => {
+  const path = route.path
+  return path === '/jobs' || path.startsWith('/jobs/')
+})
+
+// 计算属性：获取当前显示的标题
+const currentTitle = computed(() => {
+  if (isJobsRoute.value) {
+    return '作业' // 仅为jobs路由显示"作业"标题
+  }
+  return '' // 其他路由不显示额外标题
+})
+
 // 在模板中为每个导航项分配不同的ref
 // 确保即使Vue渲染顺序不一致也能正确映射索引和元素
 const setNavItemRef = (el: HTMLElement | null, index: number) => {
@@ -41,6 +55,7 @@ const setNavItemRef = (el: HTMLElement | null, index: number) => {
 // 定义导航结构，集中管理路由与索引的映射关系
 const navigationConfig = [
   { route: '/', name: 'home', icon: 'home' },
+  { route: '/jobs', name: 'jobs', icon: 'list' },
   { route: '/about', name: 'about', icon: 'about' },
   { route: '/settings', name: 'settings', icon: 'set' }
 ]
@@ -55,6 +70,8 @@ const getActiveIndex = () => {
 const updateActiveNav = (path: string) => {
   if (path === '/') {
     activeNav.value = 'home'
+  } else if (path === '/jobs' || path.startsWith('/jobs/')) {
+    activeNav.value = 'jobs'
   } else if (path === '/about') {
     activeNav.value = 'about'
   } else if (path === '/settings') {
@@ -126,6 +143,7 @@ onMounted(() => {
 
 <template>
   <header class="layui-header app-header">
+    <div class="header-title" v-if="currentTitle">{{ currentTitle }}</div>
     <div class="layui-layout-right header-icons">
       <span 
         :ref="(el) => setNavItemRef(el as HTMLElement, 0)"
@@ -141,7 +159,7 @@ onMounted(() => {
       <span 
         :ref="(el) => setNavItemRef(el as HTMLElement, 1)"
         class="layui-nav-item" 
-        :class="{ 'active': activeNav === 'about' }"
+        :class="{ 'active': activeNav === 'jobs' }"
         @click="navigateTo(navigationConfig[1].route, navigationConfig[1].name)">
         <i 
           :class="['layui-icon', `layui-icon-${navigationConfig[1].icon}`, 'icon-button']"
@@ -152,13 +170,24 @@ onMounted(() => {
       <span 
         :ref="(el) => setNavItemRef(el as HTMLElement, 2)"
         class="layui-nav-item" 
-        :class="{ 'active': activeNav === 'settings' }"
+        :class="{ 'active': activeNav === 'about' }"
         @click="navigateTo(navigationConfig[2].route, navigationConfig[2].name)">
         <i 
           :class="['layui-icon', `layui-icon-${navigationConfig[2].icon}`, 'icon-button']"
           :title="t(navigationConfig[2].name)">
         </i>
         <span class="nav-text">{{ t(navigationConfig[2].name) }}</span>
+      </span>
+      <span 
+        :ref="(el) => setNavItemRef(el as HTMLElement, 3)"
+        class="layui-nav-item" 
+        :class="{ 'active': activeNav === 'settings' }"
+        @click="navigateTo(navigationConfig[3].route, navigationConfig[3].name)">
+        <i 
+          :class="['layui-icon', `layui-icon-${navigationConfig[3].icon}`, 'icon-button']"
+          :title="t(navigationConfig[3].name)">
+        </i>
+        <span class="nav-text">{{ t(navigationConfig[3].name) }}</span>
       </span>
       
       <!-- 滑动指示器 -->
@@ -177,6 +206,16 @@ onMounted(() => {
   padding: 0 10px;
   background-color: var(--header-background) !important;
   height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-title {
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  padding-left: 20px;
 }
 
 .header-icons {
@@ -239,6 +278,11 @@ onMounted(() => {
   .icon-button {
     margin-right: 0;
   }
+  
+  .header-title {
+    font-size: 18px;
+    padding-left: 10px;
+  }
 }
 
 /* 超小屏幕设备进一步优化 */
@@ -249,6 +293,11 @@ onMounted(() => {
   
   .layui-nav-item {
     padding: 0 3px;
+  }
+  
+  .header-title {
+    font-size: 16px;
+    padding-left: 5px;
   }
 }
 

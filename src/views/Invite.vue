@@ -100,6 +100,7 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
     // 尝试解析响应为JSON，而不严格依赖Content-Type
     const text = await response.text()
     try {
+      // 尝试直接解析
       const data = JSON.parse(text)
       
       // 验证并解析作业索引数据
@@ -112,7 +113,35 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
       const parsedData = parseJobIndex(data)
       return parsedData
     } catch (_jsonError: unknown) {
-      throw new Error('Returned content is not valid JSON')
+      try {
+        // 尝试提取第一个 { 到最后一个 } 之间的内容
+        const start = text.indexOf('{')
+        const end = text.lastIndexOf('}')
+        
+        if (start === -1 || end === -1 || start >= end) {
+          throw new Error('No JSON object boundaries found')
+        }
+        
+        const jsonText = text.substring(start, end + 1)
+        console.log('Extracted JSON text:', jsonText)
+        
+        // 尝试解析提取的内容
+        const data = JSON.parse(jsonText)
+        
+        // 验证并解析作业索引数据
+        const validation = validateJobIndex(data)
+        if (!validation.isValid) {
+          throw new Error(validation.errors.join(', '))
+        }
+        
+        // 解析为标准化的作业索引对象
+        const parsedData = parseJobIndex(data)
+        return parsedData
+      } catch (extractError: unknown) {
+        // 显示更详细的错误信息，包括HTTP状态和实际内容
+        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Extraction also failed: ${(extractError as Error).message}`)
+      }
     }
   } catch (err: unknown) {
     const error = err as Error;
@@ -179,12 +208,29 @@ const acceptJob = async () => {
       console.warn('Failed to read job list from storage:', e)
     }
     
-    // 检查是否已存在相同的URL
-    const exists = jobList.some(job => job.url === originalUrl.value)
+    // 解码URL参数，使用解码后的URL进行存储
+    let decodedUrl = originalUrl.value;
+    try {
+      decodedUrl = decodeBase64(decodeURIComponent(originalUrl.value));
+    } catch (e) {
+      console.warn('Failed to decode URL, using original URL:', e);
+    }
+    
+    // 检查是否已存在相同的URL（使用解码后的URL进行比较）
+    const exists = jobList.some(job => {
+      try {
+        const jobDecodedUrl = decodeBase64(decodeURIComponent(job.url));
+        return jobDecodedUrl === decodedUrl;
+      } catch (_e) {
+        // 如果解码失败，则直接比较原始URL
+        return job.url === decodedUrl;
+      }
+    });
+    
     if (!exists) {
-      // 添加新作业到列表
+      // 添加新作业到列表，使用解码后的URL
       jobList.push({
-        url: originalUrl.value,
+        url: decodedUrl,
         data: jobData.value
       })
       

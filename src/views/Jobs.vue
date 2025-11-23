@@ -1,12 +1,16 @@
 <template>
   <div class="jobs-container">
     <h1>{{ $t('jobs') }}</h1>
+    
     <div v-if="loading" class="loading">
       {{ $t('loading') }}
     </div>
+    
     <div v-else-if="error" class="error">
       {{ error }}
+      <button @click="loadJobs" class="retry-button">{{ $t('retry') }}</button>
     </div>
+    
     <div v-else>
       <div v-if="jobList.length === 0" class="no-jobs">
         {{ $t('noJobs') }}
@@ -16,7 +20,7 @@
           v-for="job in jobList" 
           :key="job.url"
           class="job-item"
-          @click="navigateToJob(job)"
+          @click="handleJobClick(job)"
         >
           <h3>{{ job.data.description || $t('unnamedJob') }}</h3>
           <p v-if="job.data.author || job.data.last" class="job-meta">
@@ -65,15 +69,22 @@ const fetchJobIndex = async (repoUrl: string) => {
       }
       
       const text = await response.text()
-      const data = JSON.parse(text)
-      
-      // 验证并解析作业索引数据
-      const validation = validateJobIndex(data)
-      if (!validation.isValid) {
-        throw new Error(validation.errors.join(', '))
+      try {
+        const data = JSON.parse(text)
+        
+        // 验证并解析作业索引数据
+        const validation = validateJobIndex(data)
+        if (!validation.isValid) {
+          throw new Error(validation.errors.join(', '))
+        }
+        
+        return parseJobIndex(data)
+      } catch (parseError: unknown) {
+        const error = parseError as Error;
+        // 显示更详细的错误信息，包括HTTP状态和实际内容
+        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Parse error: ${error.message}`)
       }
-      
-      return parseJobIndex(data)
     }
     
     // 处理GitHub URL
@@ -112,12 +123,76 @@ const fetchJobIndex = async (repoUrl: string) => {
   }
 }
 
+// 处理作业点击事件
+const handleJobClick = async (job: JobData) => {
+  // 显示加载状态
+  loading.value = true;
+  try {
+    await navigateToJob(job);
+  } finally {
+    // 恢复加载状态
+    loading.value = false;
+  }
+};
+
 // 导航到作业详情页
-const navigateToJob = (job: JobData) => {
-  // 编码URL参数
-  const encodedUrl = encodeURIComponent(btoa(job.url))
-  router.push(`/jobs/detail?url=${encodedUrl}`)
-}
+const navigateToJob = async (job: JobData) => {
+  try {
+    // 先获取作业索引数据以确保有last字段
+    const jobIndexData = await fetchJobIndex(job.url);
+    
+    // 检查是否有last字段
+    const last = jobIndexData.last;
+    const originalUrl = job.url;
+    
+    let detailUrl = '';
+    
+    if (last) {
+      // 如果有last字段，基于原始URL构建/data/{last}/index.json路径
+      if (originalUrl.startsWith('https://github.com/')) {
+        // 处理GitHub URL
+        const urlObj = new URL(originalUrl);
+        const pathParts = urlObj.pathname.split('/').filter(part => part);
+        
+        if (pathParts.length >= 2) {
+          const user = pathParts[0];
+          const repo = pathParts[1];
+          detailUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/data/${last}/index.json`;
+        }
+      } else {
+        // 处理普通URL，在原始URL目录下查找/data/{last}/index.json
+        try {
+          const urlObj = new URL(originalUrl);
+          const basePath = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
+          detailUrl = `${basePath}data/${last}/index.json`;
+        } catch (_e) {
+          // 如果URL解析失败，使用相对路径
+          detailUrl = `data/${last}/index.json`;
+        }
+      }
+    } else {
+      // 如果没有last字段，直接使用原始URL
+      detailUrl = originalUrl;
+    }
+    
+    // 编码URL参数
+    const encodedUrl = encodeURIComponent(btoa(detailUrl));
+    // 使用完整的路径而不是相对路径
+    router.push({
+      path: '/jobs/detail',
+      query: { url: encodedUrl }
+    });
+  } catch (err: unknown) {
+    const e = err as Error;
+    console.error('Failed to navigate to job detail:', e);
+    // 如果获取索引数据失败，仍然尝试跳转到原始URL
+    const encodedUrl = encodeURIComponent(btoa(job.url));
+    router.push({
+      path: '/jobs/detail',
+      query: { url: encodedUrl }
+    });
+  }
+};
 
 // 加载作业列表
 const loadJobs = async () => {
