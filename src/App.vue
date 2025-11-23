@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
 import Header from './components/Header.vue'
 import { Analytics } from '@vercel/analytics/vue'
 import { SpeedInsights } from '@vercel/speed-insights/vue';
-
-const route = useRoute()
 </script>
 
 <template>

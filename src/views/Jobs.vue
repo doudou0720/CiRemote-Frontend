@@ -165,7 +165,7 @@ const navigateToJob = async (job: JobData) => {
           const urlObj = new URL(originalUrl);
           const basePath = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
           detailUrl = `${basePath}data/${last}/index.json`;
-        } catch (e) {
+        } catch (_e) {
           // 如果URL解析失败，使用相对路径
           detailUrl = `data/${last}/index.json`;
         }
