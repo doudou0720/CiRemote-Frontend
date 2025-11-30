@@ -11,6 +11,9 @@ declare global {
 
 const { t, locale } = useI18n()
 
+// GitHub Token
+const githubToken = ref('')
+
 // 主题设置
 const theme = ref('light')
 const themes = ref([
@@ -28,7 +31,8 @@ const languages = ref([
 // 保存状态
 const saveStatus = ref({
   language: false,
-  theme: false
+  theme: false,
+  githubToken: false
 })
 
 // 当前激活的主设置项
@@ -48,7 +52,13 @@ const saveSettings = (field: string) => {
         key: 'user_settings'
       }) || {}
       
-      settings[field] = field === 'language' ? currentLanguage.value : theme.value;
+      if (field === 'language') {
+        settings[field] = currentLanguage.value;
+      } else if (field === 'theme') {
+        settings[field] = theme.value;
+      } else if (field === 'githubToken') {
+        settings[field] = githubToken.value;
+      }
       
       (window as any).layui.data('ciremote_settings', {
         key: 'user_settings',
@@ -93,6 +103,10 @@ const loadSettings = () => {
         if (settings.theme) {
           theme.value = settings.theme
         }
+        
+        if (settings.githubToken) {
+          githubToken.value = settings.githubToken
+        }
       }
       console.log('设置已加载:', settings);
     } catch (e: unknown) {
@@ -119,21 +133,56 @@ const applyTheme = (themeValue: string) => {
 // 切换主设置项
 const switchMainSetting = (setting: string) => {
   activeMainSetting.value = setting
-  // 切换主设置项时，默认选中第一个子设置项
-  if (setting === 'web-settings') {
+  
+  // 如果切换到web-settings，且当前子设置项不在web-settings范围内，则默认切换到language
+  if (setting === 'web-settings' && 
+      activeSubSetting.value !== 'language' && 
+      activeSubSetting.value !== 'theme' &&
+      activeSubSetting.value !== 'github') {
     activeSubSetting.value = 'language'
-  } else if (setting === 'device-management') {
+  }
+  
+  // 如果切换到device-management，且当前子设置项不在device-management范围内，则默认切换到device-list
+  if (setting === 'device-management' && 
+      activeSubSetting.value !== 'device-list' && 
+      activeSubSetting.value !== 'device-config') {
     activeSubSetting.value = 'device-list'
   }
+  
+  nextTick(() => {
+    // 切换后滚动到对应位置
+    const container = document.querySelector('.settings-content-container')
+    const element = subSettingRefs.value[activeSubSetting.value]
+    
+    if (container && element) {
+      container.scrollTo({
+        top: element.offsetTop - 100,
+        behavior: 'smooth'
+      })
+    }
+  })
 }
 
 // 切换子设置项
 const switchSubSetting = (setting: string) => {
   activeSubSetting.value = setting
-  scrollToSection(setting)
+  
+  nextTick(() => {
+    // 滚动到对应位置
+    const container = document.querySelector('.settings-content-container')
+    const element = subSettingRefs.value[setting]
+    
+    if (container && element) {
+      container.scrollTo({
+        top: element.offsetTop - 100,
+        behavior: 'smooth'
+      })
+    }
+  })
 }
 
 // 滚动到指定区域
+/*
 const scrollToSection = (sectionId: string) => {
   nextTick(() => {
     const element = subSettingRefs.value[sectionId]
@@ -142,6 +191,7 @@ const scrollToSection = (sectionId: string) => {
     }
   })
 }
+*/
 
 // 监听滚动事件，更新当前激活的子设置项
 const handleScroll = () => {
@@ -184,6 +234,12 @@ watch(theme, (newTheme) => {
   saveSettings('theme')
 }, { immediate: true })
 
+// 监听GitHub Token变化
+watch(githubToken, () => {
+  // 保存到localStorage
+  saveSettings('githubToken')
+})
+
 onMounted(() => {
   // 初始化layui
   if ((window as any).layui) {
@@ -223,6 +279,9 @@ onMounted(() => {
                 </dd>
                 <dd :class="{ 'layui-this': activeSubSetting === 'theme' }">
                   <a href="javascript:;" @click="switchSubSetting('theme')">{{ t('theme') }}</a>
+                </dd>
+                <dd :class="{ 'layui-this': activeSubSetting === 'github' }">
+                  <a href="javascript:;" @click="switchSubSetting('github')">{{ t('github') }}</a>
                 </dd>
               </dl>
             </transition>
@@ -276,6 +335,16 @@ onMounted(() => {
                   </option>
                 </select>
                 <i v-if="saveStatus.theme" class="layui-icon layui-icon-ok success-icon"></i>
+              </div>
+            </div>
+            
+            <!-- GitHub Token 设置部分 -->
+            <div ref="el => subSettingRefs['github'] = el" class="settings-section">
+              <h2>GitHub 设置</h2>
+              <div class="setting-item">
+                <label>GitHub Token:</label>
+                <input v-model="githubToken" type="password" class="layui-input" placeholder="输入GitHub个人访问令牌">
+                <i v-if="saveStatus.githubToken" class="layui-icon layui-icon-ok success-icon"></i>
               </div>
             </div>
           </div>

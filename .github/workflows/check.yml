@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build and Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Limit token permission to read-only for build job
 
     steps:
       - name: Checkout code
@@ -37,6 +39,8 @@ jobs:
   lint:
     name: Lint and Code Quality
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Limit token permission to read-only for lint job
 
     steps:
       - name: Checkout code

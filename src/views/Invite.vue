@@ -35,29 +35,22 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { parseJobIndex, validateJobIndex } from '@/parsers/index/job-index-parser'
 
-// 定义类型
-interface JobData {
-  name?: string;
-  description?: string;
-  author?: string;
-  last?: string;
-  [key: string]: unknown;
-}
-
-// 声明layui的window扩展
-declare global {
-  interface Window {
-    layui: any;
-  }
-}
-
 // 声明响应式变量
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const jobData = ref<JobData | null>(null)
-const originalUrl = ref('') // 保存原始URL
+const jobData = ref<any>(null)
+const originalUrl = ref('')
+
+// 定义作业数据类型
+interface JobData {
+  name?: string;
+  description?: string;
+  author?: string;
+  last?: string;
+  [key: string]: any;
+}
 
 // 解码base64字符串
 const decodeBase64 = (str: string): string => {
@@ -76,8 +69,7 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
       throw new Error('Invalid GitHub repository URL. Must start with https://github.com/')
     }
     
-    // 将GitHub仓库URL转换为原始内容URL
-    // 例如: https://github.com/user/repo -> https://raw.githubusercontent.com/user/repo/main/index.json
+    // 将GitHub仓库URL转换为API URL
     const urlObj = new URL(repoUrl)
     const pathParts = urlObj.pathname.split('/').filter(part => part)
     
@@ -87,18 +79,85 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
     
     const user = pathParts[0]
     const repo = pathParts[1]
-    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/index.json`
+    // 保存仓库信息用于错误提示
+    const repoInfo = `${user}/${repo}`
     
-    const response = await fetch(rawUrl)
+    // 使用 GitHub API 替代 raw.githubusercontent.com
+    let apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.json`
+    
+    // 检查是否有 ref 查询参数（分支名称）
+    const urlParams = new URLSearchParams(urlObj.search);
+    const branch = urlParams.get('ref');
+    const ref = branch || 'main'; // 默认使用main分支
+    if (branch) {
+      apiUrl += `?ref=${encodeURIComponent(branch)}`;
+    }
+    
+    // 构造对应的raw URL用于fallback
+    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/${ref}/index.json`;
+    
+    let response = await fetch(apiUrl)
+    let isFallback = false;
+    
+    // 如果GitHub API返回403，则尝试使用raw URL
+    if (response.status === 403) {
+      console.log('GitHub API returned 403, trying raw URL as fallback');
+      isFallback = true;
+      try {
+        response = await fetch(rawUrl);
+      } catch (fallbackError) {
+        // 如果 fallback 请求也失败，抛出原始错误
+        let errorMessage = 'Unknown error';
+        if (fallbackError instanceof Error) {
+          errorMessage = fallbackError.message;
+        }
+        throw new Error(`GitHub API returned 403 and fallback request failed: ${errorMessage}`);
+      }
+    }
+    
+    // 如果返回404，则尝试检查仓库是否存在
+    if (response.status === 404) {
+      // 检查仓库是否存在
+      const repoCheckUrl = `https://api.github.com/repos/${repoInfo}`;
+      const repoResponse = await fetch(repoCheckUrl);
+      
+      if (repoResponse.status === 404) {
+        throw new Error(`Repository ${repoInfo} not found`);
+      } else if (!repoResponse.ok) {
+        throw new Error(`Failed to check repository ${repoInfo}: ${repoResponse.status} ${repoResponse.statusText}`);
+      }
+      
+      // 仓库存在但index.json不存在
+      throw new Error(`index.json not found in repository ${repoInfo}`);
+    }
+    
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('index.json not found in the repository root')
       }
-      throw new Error(`Failed to fetch ${rawUrl}: ${response.status} ${response.statusText}`)
+      throw new Error(`Failed to fetch ${isFallback ? rawUrl : apiUrl}: ${response.status} ${response.statusText}`)
     }
     
-    // 尝试解析响应为JSON，而不严格依赖Content-Type
-    const text = await response.text()
+    let text = '';
+    if (!isFallback) {
+      // 解析 GitHub API 响应并获取文件内容
+      const responseData = await response.json()
+      const content = atob(responseData.content)
+      
+      // 正确处理UTF-8编码
+      const decoder = new TextDecoder('utf-8');
+      const encodedBytes = new Uint8Array(content.length);
+      for (let i = 0; i < content.length; i++) {
+        encodedBytes[i] = content.charCodeAt(i);
+      }
+      text = decoder.decode(encodedBytes);
+    } else {
+      // 直接获取文本内容 (fallback情况)
+      const buffer = await response.arrayBuffer();
+      const decoder = new TextDecoder('utf-8');
+      text = decoder.decode(buffer);
+    }
+    
     try {
       // 尝试直接解析
       const data = JSON.parse(text)
@@ -140,7 +199,8 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
       } catch (extractError: unknown) {
         // 显示更详细的错误信息，包括HTTP状态和实际内容
         const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
-        throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Extraction also failed: ${(extractError as Error).message}`)
+        const error = extractError as Error;
+        throw new Error(`JSON解析失败: ${error.message}. 内容预览: "${preview}"`);
       }
     }
   } catch (err: unknown) {
@@ -149,31 +209,44 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
   }
 }
 
-// 加载作业数据
-const loadJobData = async () => {
+// 处理邀请请求
+const handleInvite = async () => {
+  let url = route.query.url as string
+  const method = route.query.method as string
+  
+  // 保存原始URL用于存储
+  originalUrl.value = url;
+  
+  // 检查必需参数
+  if (!url) {
+    error.value = 'Missing required parameter: url'
+    return
+  }
+  
+  if (!method) {
+    error.value = 'Missing required parameter: method'
+    return
+  }
+  
+  // 解码base64编码的URL
   try {
-    loading.value = true
-    error.value = ''
-    jobData.value = null
-    
-    // 从查询参数获取URL
-    const urlParam = route.query.url as string
-    if (!urlParam) {
-      throw new Error('Missing required parameter: url')
+    url = decodeBase64(url)
+  } catch (_e) {
+    // 如果解码失败，假设URL未编码
+    // 不做任何处理，继续使用原始URL
+  }
+  
+  loading.value = true
+  error.value = ''
+  
+  try {
+    if (method === 'github') {
+      jobData.value = await fetchGithubIndex(url)
+    } else {
+      error.value = `Unsupported method: ${method}`
     }
-    
-    // 保存原始URL
-    originalUrl.value = urlParam
-    
-    // 解码URL参数
-    const decodedUrl = decodeBase64(decodeURIComponent(urlParam))
-    
-    // 获取作业索引数据
-    const data = await fetchGithubIndex(decodedUrl)
-    jobData.value = data
-  } catch (err: unknown) {
-    const e = err as Error;
-    error.value = e.message || 'Failed to load job data'
+  } catch (err: any) {
+    error.value = err.message || 'An error occurred while processing the request'
   } finally {
     loading.value = false
   }
@@ -181,93 +254,54 @@ const loadJobData = async () => {
 
 // 重试函数
 const retry = () => {
-  loadJobData()
+  handleInvite()
 }
 
 // 接受作业
-const acceptJob = async () => {
-  if (!jobData.value) return
-  
+const acceptJob = () => {
   try {
-    // 保存作业数据到localStorage
-    const jobListKey = 'jobList'
-    let jobList: Array<{url: string, data: JobData}> = []
-    
-    // 尝试从localStorage读取现有的作业列表
-    try {
-      if (window.layui) {
-        const storedData = window.layui.data('jobs')
-        jobList = storedData[jobListKey] || []
-      } else {
-        const storedList = localStorage.getItem(jobListKey)
-        if (storedList) {
-          jobList = JSON.parse(storedList)
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to read job list from storage:', e)
-    }
-    
-    // 解码URL参数，使用解码后的URL进行存储
-    let decodedUrl = originalUrl.value;
-    try {
-      decodedUrl = decodeBase64(decodeURIComponent(originalUrl.value));
-    } catch (e) {
-      console.warn('Failed to decode URL, using original URL:', e);
-    }
-    
-    // 检查是否已存在相同的URL（使用解码后的URL进行比较）
-    const exists = jobList.some(job => {
-      try {
-        const jobDecodedUrl = decodeBase64(decodeURIComponent(job.url));
-        return jobDecodedUrl === decodedUrl;
-      } catch (_e) {
-        // 如果解码失败，则直接比较原始URL
-        return job.url === decodedUrl;
-      }
-    });
-    
-    if (!exists) {
-      // 添加新作业到列表，使用解码后的URL
-      jobList.push({
-        url: decodedUrl,
-        data: jobData.value
-      })
+    if (window.layui) {
+      // 使用layui的数据存储机制
+      const storedUrls = window.layui.data('job_invites', {
+        key: 'accepted_urls'
+      }) || [];
       
-      // 保存更新后的作业列表
-      try {
-        if (window.layui) {
-          window.layui.data('jobs', {
-            key: jobListKey,
-            value: jobList
-          })
-        } else {
-          localStorage.setItem(jobListKey, JSON.stringify(jobList))
-        }
-      } catch (e) {
-        console.error('Failed to save job list:', e)
-        throw new Error('Failed to save job to localStorage')
+      // 确保存储的是数组
+      let urlArray: string[] = [];
+      if (Array.isArray(storedUrls)) {
+        urlArray = storedUrls;
+      } else if (typeof storedUrls === 'string') {
+        urlArray = [storedUrls];
       }
+      
+      // 添加新的URL（如果尚未存在）
+      if (!urlArray.includes(originalUrl.value)) {
+        urlArray.push(originalUrl.value);
+        window.layui.data('job_invites', {
+          key: 'accepted_urls',
+          value: urlArray
+        });
+      }
+    } else {
+      // 使用localStorage
+      localStorage.setItem('job_invite_url', originalUrl.value);
     }
     
-    // 跳转到作业列表页面
+    alert('作业已接受!')
     router.push('/jobs')
-  } catch (err: unknown) {
-    const e = err as Error;
-    error.value = e.message || 'Failed to accept job'
+  } catch (_e: any) {
+    console.error('Error accepting job:', _e)
+    alert('接受作业时发生错误')
   }
 }
 
 // 拒绝作业
 const rejectJob = () => {
-  // 清除作业数据并返回上一页
-  jobData.value = null
-  router.go(-1)
+  router.push('/jobs')
 }
 
-// 生命周期钩子
 onMounted(() => {
-  loadJobData()
+  handleInvite()
 })
 </script>
 
