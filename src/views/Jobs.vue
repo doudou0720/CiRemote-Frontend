@@ -61,7 +61,7 @@ const jobList = ref<JobData[]>([])
 const decodeBase64 = (str: string): string => {
   try {
     return atob(str)
-  } catch (e) {
+  } catch (_e) {
     return str // 如果解码失败，返回原始字符串
   }
 }
@@ -308,7 +308,7 @@ const navigateToJob = (job: {url: string, data: any}) => {
         const urlObj = new URL(originalUrl)
         const basePath = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1)
         detailUrl = `${basePath}data/${last}/index.json`
-      } catch (e) {
+      } catch (_e) {
         // 如果URL解析失败，使用相对路径
         detailUrl = `data/${last}/index.json`
       }

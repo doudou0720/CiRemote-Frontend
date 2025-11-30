@@ -231,7 +231,7 @@ const handleInvite = async () => {
   // 解码base64编码的URL
   try {
     url = decodeBase64(url)
-  } catch (e) {
+  } catch (_e) {
     // 如果解码失败，假设URL未编码
     // 不做任何处理，继续使用原始URL
   }
@@ -289,8 +289,8 @@ const acceptJob = () => {
     
     alert('作业已接受!')
     router.push('/jobs')
-  } catch (e) {
-    console.error('Error accepting job:', e)
+  } catch (_e: any) {
+    console.error('Error accepting job:', _e)
     alert('接受作业时发生错误')
   }
 }

@@ -173,7 +173,7 @@ const allAttachments = computed(() => {
 const decodeBase64 = (str: string): string => {
   try {
     return atob(str)
-  } catch (e) {
+  } catch (_e) {
     return str // 如果解码失败，返回原始字符串
   }
 }
@@ -183,7 +183,7 @@ const formatExportDate = (dateString: string): string => {
   try {
     const date = new Date(dateString);
     return date.toLocaleString();
-  } catch (e) {
+  } catch (_e) {
     return dateString;
   }
 }
@@ -193,7 +193,7 @@ const formatDueTime = (dateString: string): string => {
   try {
     const date = new Date(dateString);
     return date.toLocaleString();
-  } catch (e) {
+  } catch (_e) {
     return dateString;
   }
 }
@@ -469,7 +469,7 @@ const loadJobDetail = async () => {
             decodedUrl = doubleDecoded;
             console.log('Double decoded URL:', decodedUrl);
           }
-        } catch (e) {
+        } catch (_e) {
           // 如果再次解码失败，就使用第一次解码的结果
           console.log('Single decoding was correct');
         }
@@ -482,7 +482,7 @@ const loadJobDetail = async () => {
     try {
       new URL(decodedUrl);
     } catch (urlError) {
-      throw new Error(`Invalid URL format: ${decodedUrl}`);
+      throw new Error(`Invalid URL format: ${urlError.message}`);
     }
     
     // 获取作业数据
@@ -587,8 +587,8 @@ const loadJobDetail = async () => {
           const attachments = await fetchGithubAttachments(attachmentsRepoUrl, basePath);
           // 为所有作业使用相同的附件列表
           githubAttachments.value = jobData.value.Homeworks.map(() => attachments);
-        } catch (pathError) {
-          console.error('Error parsing file path:', pathError);
+        } catch (_pathError) {
+          console.error('Error parsing file path:', _pathError);
           // 出错时回退到原来的方法
           const attachmentsPromises = jobData.value.Homeworks.map(async (homework: Homework, index: number) => {
             // 构建作业目录路径，使用Subject作为目录名
