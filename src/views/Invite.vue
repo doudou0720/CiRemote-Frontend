@@ -79,35 +79,80 @@ const fetchGithubIndex = async (repoUrl: string): Promise<JobData> => {
     
     const user = pathParts[0]
     const repo = pathParts[1]
+    // 保存仓库信息用于错误提示
+    const repoInfo = `${user}/${repo}`
+    
     // 使用 GitHub API 替代 raw.githubusercontent.com
     let apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.json`
     
     // 检查是否有 ref 查询参数（分支名称）
     const urlParams = new URLSearchParams(urlObj.search);
     const branch = urlParams.get('ref');
+    const ref = branch || 'main'; // 默认使用main分支
     if (branch) {
       apiUrl += `?ref=${encodeURIComponent(branch)}`;
     }
     
-    const response = await fetch(apiUrl)
+    // 构造对应的raw URL用于fallback
+    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/${ref}/index.json`;
+    
+    let response = await fetch(apiUrl)
+    let isFallback = false;
+    
+    // 如果GitHub API返回403，则尝试使用raw URL
+    if (response.status === 403) {
+      console.log('GitHub API returned 403, trying raw URL as fallback');
+      isFallback = true;
+      try {
+        response = await fetch(rawUrl);
+      } catch (fallbackError) {
+        // 如果 fallback 请求也失败，抛出原始错误
+        throw new Error(`GitHub API returned 403 and fallback request failed: ${fallbackError.message}`);
+      }
+    }
+    
+    // 如果返回404，则尝试检查仓库是否存在
+    if (response.status === 404) {
+      // 检查仓库是否存在
+      const repoCheckUrl = `https://api.github.com/repos/${repoInfo}`;
+      const repoResponse = await fetch(repoCheckUrl);
+      
+      if (repoResponse.status === 404) {
+        throw new Error(`Repository ${repoInfo} not found`);
+      } else if (!repoResponse.ok) {
+        throw new Error(`Failed to check repository ${repoInfo}: ${repoResponse.status} ${repoResponse.statusText}`);
+      }
+      
+      // 仓库存在但index.json不存在
+      throw new Error(`index.json not found in repository ${repoInfo}`);
+    }
+    
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('index.json not found in the repository root')
       }
-      throw new Error(`Failed to fetch ${apiUrl}: ${response.status} ${response.statusText}`)
+      throw new Error(`Failed to fetch ${isFallback ? rawUrl : apiUrl}: ${response.status} ${response.statusText}`)
     }
     
-    // 解析 GitHub API 响应并获取文件内容
-    const responseData = await response.json()
-    const content = atob(responseData.content)
-    
-    // 正确处理UTF-8编码
-    const decoder = new TextDecoder('utf-8');
-    const encodedBytes = new Uint8Array(content.length);
-    for (let i = 0; i < content.length; i++) {
-      encodedBytes[i] = content.charCodeAt(i);
+    let text = '';
+    if (!isFallback) {
+      // 解析 GitHub API 响应并获取文件内容
+      const responseData = await response.json()
+      const content = atob(responseData.content)
+      
+      // 正确处理UTF-8编码
+      const decoder = new TextDecoder('utf-8');
+      const encodedBytes = new Uint8Array(content.length);
+      for (let i = 0; i < content.length; i++) {
+        encodedBytes[i] = content.charCodeAt(i);
+      }
+      text = decoder.decode(encodedBytes);
+    } else {
+      // 直接获取文本内容 (fallback情况)
+      const buffer = await response.arrayBuffer();
+      const decoder = new TextDecoder('utf-8');
+      text = decoder.decode(buffer);
     }
-    const text = decoder.decode(encodedBytes);
     
     try {
       // 尝试直接解析

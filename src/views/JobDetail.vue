@@ -277,6 +277,8 @@ const fetchJobData = async (url: string) => {
   try {
     let finalUrl = url;
     let isGithubApi = false;
+    let originalRawUrl = ''; // 保存原始raw URL用于fallback
+    let repoInfo = ''; // 保存仓库信息用于错误提示
     
     // 检查是否是GitHub仓库URL，如果是则转换为API URL
     if (url.startsWith('https://github.com/')) {
@@ -293,12 +295,19 @@ const fetchJobData = async (url: string) => {
         const repo = pathParts[1]
         let apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.json`
         
+        // 保存仓库信息用于错误提示
+        repoInfo = `${user}/${repo}`
+        
         // 检查是否有 ref 查询参数（分支名称）
         const urlParams = new URLSearchParams(urlObj.search);
         const branch = urlParams.get('ref');
+        const ref = branch || 'main'; // 默认使用main分支
         if (branch) {
           apiUrl += `?ref=${encodeURIComponent(branch)}`;
         }
+        
+        // 构造对应的raw URL用于fallback
+        originalRawUrl = `https://raw.githubusercontent.com/${user}/${repo}/${ref}/index.json`;
         
         finalUrl = apiUrl;
         isGithubApi = true;
@@ -309,6 +318,8 @@ const fetchJobData = async (url: string) => {
     
     // 检查是否是raw.githubusercontent.com URL，如果是则转换为API URL
     if (url.startsWith('https://raw.githubusercontent.com/')) {
+      originalRawUrl = url; // 保存原始raw URL用于fallback
+      
       try {
         // 将raw URL转换为API URL
         const urlObj = new URL(url);
@@ -322,6 +333,9 @@ const fetchJobData = async (url: string) => {
         const repo = pathParts[1];
         const ref = pathParts[2]; // 分支名
         const filePath = pathParts.slice(3).join('/'); // 文件路径
+        
+        // 保存仓库信息用于错误提示
+        repoInfo = `${user}/${repo}`
         
         let apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/${filePath}`;
         apiUrl += `?ref=${ref}`;
@@ -348,13 +362,43 @@ const fetchJobData = async (url: string) => {
       }
     }
     
-    const response = await fetch(finalUrl, fetchOptions);
+    let response = await fetch(finalUrl, fetchOptions);
+    let isFallback = false;
+    
+    // 如果GitHub API返回403，则尝试使用raw URL
+    if (isGithubApi && response.status === 403 && originalRawUrl) {
+      console.log('GitHub API returned 403, trying raw URL as fallback');
+      isFallback = true;
+      try {
+        response = await fetch(originalRawUrl);
+      } catch (fallbackError) {
+        // 如果 fallback 请求也失败，抛出原始错误
+        throw new Error(`GitHub API returned 403 and fallback request failed: ${fallbackError.message}`);
+      }
+    }
+    
+    // 如果是GitHub API请求且返回404，则尝试检查仓库是否存在
+    if (isGithubApi && response.status === 404 && repoInfo) {
+      // 检查仓库是否存在
+      const repoCheckUrl = `https://api.github.com/repos/${repoInfo}`;
+      const repoResponse = await fetch(repoCheckUrl, fetchOptions);
+      
+      if (repoResponse.status === 404) {
+        throw new Error(`Repository ${repoInfo} not found`);
+      } else if (!repoResponse.ok) {
+        throw new Error(`Failed to check repository ${repoInfo}: ${repoResponse.status} ${repoResponse.statusText}`);
+      }
+      
+      // 仓库存在但index.json不存在
+      throw new Error(`index.json not found in repository ${repoInfo}`);
+    }
+    
     if (!response.ok) {
-      throw new Error(`Failed to fetch ${finalUrl}: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch ${isFallback ? originalRawUrl : finalUrl}: ${response.status} ${response.statusText}`);
     }
     
     let text = '';
-    if (isGithubApi) {
+    if (isGithubApi && !isFallback) {
       // 解析 GitHub API 响应并获取文件内容
       const responseData = await response.json();
       // GitHub API 返回的内容是base64编码的，需要解码
@@ -368,7 +412,7 @@ const fetchJobData = async (url: string) => {
       }
       text = decoder.decode(encodedBytes);
     } else {
-      // 直接获取文本内容
+      // 直接获取文本内容 (包括fallback情况)
       const buffer = await response.arrayBuffer();
       const decoder = new TextDecoder('utf-8');
       text = decoder.decode(buffer);
@@ -622,30 +666,34 @@ const goBack = () => {
 const handleAttachmentClick = (attachment: Attachment) => {
   // 检查是否可以预览
   if (canPreviewWithOffice(attachment.name)) {
-    // 确保layui已加载并可用
+    // 使用 layui 的 layer.confirm 替代原生 confirm
     const layui = (window as any).layui;
     if (layui && typeof layui.use === 'function') {
       layui.use('layer', () => {
         const layer = layui.layer;
         
-        // 用户选择预览 - 在layui弹出层中使用iframe显示
-        const previewUrl = getPreviewUrl(attachment);
-        
-        layer.open({
-          type: 1,
-          title: `${t('previewOrDownload')} "${attachment.name}"`,
-          area: ['80%', '80%'],
-          content: `<iframe src="${previewUrl}" style="width:100%;height:100%;border:none;"></iframe>`,
-          btn: [t('cancelDownload')],
-          yes: function(index: number) {
-            // 用户选择下载
-            window.open(attachment.download_url, '_blank');
-            layer.close(index);
-          },
-          cancel: function() {
-            // 关闭弹窗时也选择下载
-            window.open(attachment.download_url, '_blank');
-          }
+        layer.confirm(`${t('previewOrDownload')} "${attachment.name}"?`, {
+          title: t('previewTitle'),
+          btn: [t('preview'), t('download')], // 按钮文字
+          icon: 3, // 问号图标
+          skin: 'layui-layer-molv' // 墨绿主题
+        }, 
+        () => { // 点击预览
+          const previewUrl = getPreviewUrl(attachment);
+          layer.open({
+            type: 1,
+            title: `${t('previewing')} "${attachment.name}"`,
+            area: ['80%', '80%'],
+            content: `<iframe src="${previewUrl}" style="width:100%;height:100%;border:none;"></iframe>`,
+            btn: [t('download')],
+            yes: function(index: number) {
+              window.open(attachment.download_url, '_blank');
+              layer.close(index);
+            }
+          });
+        }, 
+        () => { // 点击下载或者关闭
+          window.open(attachment.download_url, '_blank');
         });
       });
     } else {
