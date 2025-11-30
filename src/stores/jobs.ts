@@ -144,7 +144,11 @@ export const useJobsStore = defineStore('jobs', () => {
           response = await fetch(rawUrl);
         } catch (fallbackError) {
           // 如果 fallback 请求也失败，抛出原始错误
-          throw new Error(`GitHub API returned 403 and fallback request failed: ${fallbackError.message}`);
+          let errorMessage = 'Unknown error';
+          if (fallbackError instanceof Error) {
+            errorMessage = fallbackError.message;
+          }
+          throw new Error(`GitHub API returned 403 and fallback request failed: ${errorMessage}`);
         }
       }
       

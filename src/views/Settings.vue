@@ -182,6 +182,7 @@ const switchSubSetting = (setting: string) => {
 }
 
 // 滚动到指定区域
+/*
 const scrollToSection = (sectionId: string) => {
   nextTick(() => {
     const element = subSettingRefs.value[sectionId]
@@ -190,6 +191,7 @@ const scrollToSection = (sectionId: string) => {
     }
   })
 }
+*/
 
 // 监听滚动事件，更新当前激活的子设置项
 const handleScroll = () => {
