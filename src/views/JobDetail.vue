@@ -482,7 +482,11 @@ const loadJobDetail = async () => {
     try {
       new URL(decodedUrl);
     } catch (urlError) {
-      throw new Error(`Invalid URL format: ${urlError.message}`);
+      if (urlError instanceof Error) {
+        throw new Error(`Invalid URL format: ${urlError.message}`);
+      } else {
+        throw new Error(`Invalid URL format: ${String(urlError)}`);
+      }
     }
     
     // 获取作业数据
