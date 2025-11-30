@@ -42,7 +42,7 @@ import { parseJobIndex, validateJobIndex } from '@/parsers/index/job-index-parse
 // 定义类型
 interface JobData {
   url: string;
-  data: Record<string, unknown>;
+  data: any;
 }
 
 // 声明layui的window扩展
@@ -57,6 +57,15 @@ const loading = ref(false)
 const error = ref('')
 const jobList = ref<JobData[]>([])
 
+// 解码base64字符串
+const decodeBase64 = (str: string): string => {
+  try {
+    return atob(str)
+  } catch (e) {
+    return str // 如果解码失败，返回原始字符串
+  }
+}
+
 // 获取作业索引数据
 const fetchJobIndex = async (repoUrl: string) => {
   try {
@@ -68,60 +77,170 @@ const fetchJobIndex = async (repoUrl: string) => {
         throw new Error(`Failed to fetch ${repoUrl}: ${response.status} ${response.statusText}`)
       }
       
-      const text = await response.text()
-      try {
-        const data = JSON.parse(text)
-        
-        // 验证并解析作业索引数据
-        const validation = validateJobIndex(data)
-        if (!validation.isValid) {
-          throw new Error(validation.errors.join(', '))
-        }
-        
-        return parseJobIndex(data)
-      } catch (parseError: unknown) {
-        const error = parseError as Error;
-        // 显示更详细的错误信息，包括HTTP状态和实际内容
-        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
-        throw new Error(`Returned content is not valid JSON. Server returned: ${response.status} ${response.statusText}. Content preview: "${preview}". Parse error: ${error.message}`)
+      // 使用TextDecoder正确处理UTF-8编码
+      const buffer = await response.arrayBuffer()
+      const decoder = new TextDecoder('utf-8')
+      const text = decoder.decode(buffer)
+      
+      const data = JSON.parse(text)
+      
+      // 验证并解析作业索引数据
+      const validation = validateJobIndex(data)
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '))
       }
+      
+      return parseJobIndex(data)
     }
     
-    // 处理GitHub URL
-    const urlObj = new URL(repoUrl)
-    const pathParts = urlObj.pathname.split('/').filter(part => part)
+    // 处理GitHub URL - 使用GitHub API方式获取内容
+    const urlObj = new URL(repoUrl);
+    const pathParts = urlObj.pathname.split('/').filter(part => part);
     
     if (pathParts.length < 2) {
-      throw new Error('Invalid GitHub repository URL')
+      throw new Error('Invalid GitHub repository URL');
     }
     
-    const user = pathParts[0]
-    const repo = pathParts[1]
-    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/index.json`
+    const user = pathParts[0];
+    const repo = pathParts[1];
+    let apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.json`;
     
-    const response = await fetch(rawUrl)
+    // 检查是否有 ref 查询参数（分支名称）
+    const urlParams = new URLSearchParams(urlObj.search);
+    const branch = urlParams.get('ref');
+    if (branch) {
+      apiUrl += `?ref=${encodeURIComponent(branch)}`;
+    }
+    
+    const response = await fetch(apiUrl);
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('index.json not found in the repository root')
+        throw new Error('index.json not found in the repository root');
       }
-      throw new Error(`Failed to fetch ${rawUrl}: ${response.status} ${response.statusText}`)
+      throw new Error(`Failed to fetch ${apiUrl}: ${response.status} ${response.statusText}`);
     }
     
-    const text = await response.text()
-    const data = JSON.parse(text)
+    // 解析 GitHub API 响应并获取文件内容
+    const responseData = await response.json();
+    // GitHub API 返回的内容是base64编码的，需要解码
+    const content = atob(responseData.content);
+    
+    // 正确处理UTF-8编码
+    const decoder = new TextDecoder('utf-8');
+    const encodedBytes = new Uint8Array(content.length);
+    for (let i = 0; i < content.length; i++) {
+      encodedBytes[i] = content.charCodeAt(i);
+    }
+    const text = decoder.decode(encodedBytes);
+    
+    const data = JSON.parse(text);
     
     // 验证并解析作业索引数据
-    const validation = validateJobIndex(data)
+    const validation = validateJobIndex(data);
     if (!validation.isValid) {
-      throw new Error(validation.errors.join(', '))
+      throw new Error(validation.errors.join(', '));
     }
     
-    return parseJobIndex(data)
-  } catch (err: unknown) {
-    const error = err as Error;
-    throw new Error(`Failed to fetch job index: ${error.message}`)
+    return parseJobIndex(data);
+  } catch (err: any) {
+    throw new Error(`Failed to fetch job index: ${err.message}`);
   }
 }
+
+// 加载所有作业
+const loadJobs = async () => {
+  loading.value = true
+  error.value = ''
+  jobList.value = []
+  
+  try {
+    let urls: string[] = []
+    
+    // 从LocalStorage获取URL列表
+    if (window.layui) {
+      const storedUrls = window.layui.data('job_invites', {
+        key: 'accepted_urls'
+      });
+      
+      if (storedUrls) {
+        // 处理单个URL或URL数组
+        if (Array.isArray(storedUrls)) {
+          urls = storedUrls
+        } else {
+          urls = [storedUrls]
+        }
+      }
+    } else {
+      const storedUrl = localStorage.getItem('job_invite_url')
+      if (storedUrl) {
+        urls = [storedUrl]
+      }
+    }
+    
+    // 获取每个URL的作业数据
+    const jobs = []
+    for (const url of urls) {
+      try {
+        const decodedUrl = decodeBase64(url)
+        const data = await fetchJobIndex(decodedUrl)
+        jobs.push({
+          url: url,
+          data: data
+        })
+      } catch (err) {
+        console.error(`Failed to load job from ${url}:`, err)
+      }
+    }
+    
+    jobList.value = jobs
+  } catch (err: any) {
+    error.value = err.message || 'Failed to load jobs'
+  } finally {
+    loading.value = false
+  }
+}
+
+// 导航到作业详情
+const navigateToJob = (job: {url: string, data: any}) => {
+  const last = job.data.last
+  const originalUrl = decodeBase64(job.url)
+  
+  if (last) {
+    // 如果有last字段，基于原始URL构建/data/{last}/index.json路径
+    let detailUrl = ''
+    
+    if (originalUrl.startsWith('https://github.com/')) {
+      // 处理GitHub URL
+      const urlObj = new URL(originalUrl)
+      const pathParts = urlObj.pathname.split('/').filter(part => part)
+      
+      if (pathParts.length >= 2) {
+        const user = pathParts[0]
+        const repo = pathParts[1]
+        detailUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/data/${last}/index.json`
+      }
+    } else {
+      // 处理普通URL，在原始URL目录下查找/data/{last}/index.json
+      try {
+        const urlObj = new URL(originalUrl)
+        const basePath = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1)
+        detailUrl = `${basePath}data/${last}/index.json`
+      } catch (e) {
+        // 如果URL解析失败，使用相对路径
+        detailUrl = `data/${last}/index.json`
+      }
+    }
+    
+    router.push(`/jobs/detail?url=${encodeURIComponent(btoa(detailUrl))}`)
+  } else {
+    // 如果没有last字段，直接访问原始URL
+    router.push(`/jobs/detail?url=${encodeURIComponent(job.url)}`)
+  }
+}
+
+onMounted(() => {
+  loadJobs()
+})
 
 // 处理作业点击事件
 const handleJobClick = async (job: JobData) => {
@@ -135,116 +254,6 @@ const handleJobClick = async (job: JobData) => {
   }
 };
 
-// 导航到作业详情页
-const navigateToJob = async (job: JobData) => {
-  try {
-    // 先获取作业索引数据以确保有last字段
-    const jobIndexData = await fetchJobIndex(job.url);
-    
-    // 检查是否有last字段
-    const last = jobIndexData.last;
-    const originalUrl = job.url;
-    
-    let detailUrl = '';
-    
-    if (last) {
-      // 如果有last字段，基于原始URL构建/data/{last}/index.json路径
-      if (originalUrl.startsWith('https://github.com/')) {
-        // 处理GitHub URL
-        const urlObj = new URL(originalUrl);
-        const pathParts = urlObj.pathname.split('/').filter(part => part);
-        
-        if (pathParts.length >= 2) {
-          const user = pathParts[0];
-          const repo = pathParts[1];
-          detailUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/data/${last}/index.json`;
-        }
-      } else {
-        // 处理普通URL，在原始URL目录下查找/data/{last}/index.json
-        try {
-          const urlObj = new URL(originalUrl);
-          const basePath = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
-          detailUrl = `${basePath}data/${last}/index.json`;
-        } catch (_e) {
-          // 如果URL解析失败，使用相对路径
-          detailUrl = `data/${last}/index.json`;
-        }
-      }
-    } else {
-      // 如果没有last字段，直接使用原始URL
-      detailUrl = originalUrl;
-    }
-    
-    // 编码URL参数
-    const encodedUrl = encodeURIComponent(btoa(detailUrl));
-    // 使用完整的路径而不是相对路径
-    router.push({
-      path: '/jobs/detail',
-      query: { url: encodedUrl }
-    });
-  } catch (err: unknown) {
-    const e = err as Error;
-    console.error('Failed to navigate to job detail:', e);
-    // 如果获取索引数据失败，仍然尝试跳转到原始URL
-    const encodedUrl = encodeURIComponent(btoa(job.url));
-    router.push({
-      path: '/jobs/detail',
-      query: { url: encodedUrl }
-    });
-  }
-};
-
-// 加载作业列表
-const loadJobs = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    
-    // 尝试从localStorage读取作业列表
-    let storedJobs: JobData[] = []
-    
-    try {
-      if ((window as any).layui) {
-        const storedData = (window as any).layui.data('jobs')
-        storedJobs = storedData.jobList || []
-      } else {
-        const storedList = localStorage.getItem('jobList')
-        if (storedList) {
-          storedJobs = JSON.parse(storedList)
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to read job list from storage:', e)
-    }
-    
-    // 获取每个作业的详细信息
-    const jobsWithDetails = await Promise.all(storedJobs.map(async (job) => {
-      try {
-        const data = await fetchJobIndex(job.url)
-        return {
-          url: job.url,
-          data
-        }
-      } catch (err) {
-        console.error(`Failed to fetch job data for ${job.url}:`, err)
-        // 返回原始数据
-        return job
-      }
-    }))
-    
-    jobList.value = jobsWithDetails
-  } catch (err: unknown) {
-    const e = err as Error;
-    error.value = e.message || 'Failed to load jobs'
-  } finally {
-    loading.value = false
-  }
-}
-
-// 生命周期钩子
-onMounted(() => {
-  loadJobs()
-})
 </script>
 
 <style scoped>
